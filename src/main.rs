@@ -3,10 +3,12 @@ use kuragecc::codegen::CodeGenerator;
 use kuragecc::lexer::Lexer;
 use kuragecc::parser::Parser;
 
-fn main() {
-    let code = "return 0;";
+use std::fs;
 
-    let mut lexer = Lexer::new(code);
+fn main() {
+    let code = fs::read_to_string("example/main.tmpc").expect("File Input Error");
+
+    let mut lexer = Lexer::new(&code);
     lexer.tokenize();
     let tokens = lexer.tokens;
 
