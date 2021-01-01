@@ -2,7 +2,7 @@ use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::Position;
 
 /*
-    block  -> stmt*  | return
+    block  -> stmt* return
     return -> `return` (expr | identifier) `;`
     stmt   -> assign
     assign -> identifier `=` expr `;`
@@ -19,7 +19,7 @@ use super::Position;
 pub enum ASTKind {
     Block(Vec<AST>),
     Return(Box<AST>),
-    Assign(Box<AST>, Box<AST>),
+    Assign(String, Box<AST>),
     Binary(Box<AST>, Box<AST>, OperatorKind),
     Unary(Box<AST>, OperatorKind),
     Identifier(String),
@@ -48,7 +48,7 @@ impl std::fmt::Display for AST {
                 write!(f, "")
             }
             ASTKind::Return(ast) => write!(f, "return [{}]", *ast),
-            ASTKind::Assign(id, expr) => write!(f, "{} {} =", *id, *expr),
+            ASTKind::Assign(id, expr) => write!(f, "{} {} =", id, *expr),
             ASTKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
             ASTKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
             ASTKind::Identifier(name) => write!(f, "{}", name),
@@ -74,9 +74,8 @@ fn rec_visualize_ast(ast: AST, i: usize) {
             println!("Return:");
             rec_visualize_ast(*ast, i + 1);
         }
-        ASTKind::Assign(id, expr) => {
-            println!("Assign:");
-            rec_visualize_ast(*id, i + 1);
+        ASTKind::Assign(name, expr) => {
+            println!("Assign {}:", name);
             rec_visualize_ast(*expr, i + 1)
         }
         ASTKind::Binary(l, r, ope) => {

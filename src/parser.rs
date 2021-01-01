@@ -109,11 +109,9 @@ impl Parser {
         // assign -> identifier `=` expr `;`
         let id = self.look_and_forward().unwrap();
         let start = id.pos;
-        let id = if let TokenKind::Identifier(name) = id.kind {
-            let kind = ASTKind::Identifier(name);
-            AST::new(kind, id.pos)
-        } else {
-            unreachable!()
+        let name = match id.kind {
+            TokenKind::Identifier(name) => name,
+            _ => unreachable!(),
         };
         let equal = self.look_and_forward().unwrap();
         match equal.kind {
@@ -128,7 +126,7 @@ impl Parser {
             _ => unreachable!(),
         }
 
-        let kind = ASTKind::Assign(Box::new(id), Box::new(expr));
+        let kind = ASTKind::Assign(name, Box::new(expr));
         let pos = start.extend_to(end);
         AST::new(kind, pos)
     }
