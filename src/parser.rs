@@ -36,19 +36,19 @@ impl Inspector for Parser {
         self.look >= self.tokens.len()
     }
 
-    fn look_at(&self) -> Token {
-        self.tokens[self.look].clone()
+    fn look_at(&self) -> Option<Token> {
+        self.tokens.get(self.look).map(|t| t.clone())
     }
 
-    fn look_prev(&self) -> Token {
-        self.tokens[self.look - 1].clone()
+    fn look_prev(&self) -> Option<Token> {
+        self.tokens.get(self.look - 1).map(|t| t.clone())
     }
 
-    fn look_next(&self) -> Token {
-        self.tokens[self.look + 1].clone()
+    fn look_next(&self) -> Option<Token> {
+        self.tokens.get(self.look + 1).map(|t| t.clone())
     }
 
-    fn look_and_forward(&mut self) -> Token {
+    fn look_and_forward(&mut self) -> Option<Token> {
         self.forward();
         self.look_prev()
     }
@@ -74,9 +74,9 @@ impl Parser {
 
     fn parse_return(&mut self) -> AST {
         // return -> `return` expr `;`
-        let ret = self.look_and_forward();
+        let ret = self.look_and_forward().unwrap();
         let expr = self.parse_expr();
-        let semicolon = self.look_and_forward();
+        let semicolon = self.look_and_forward().unwrap();
         let pos = ret.pos.extend_to(semicolon.pos);
         let kind = ASTKind::Return(Box::new(expr));
         AST::new(kind, pos)
@@ -97,7 +97,7 @@ impl Parser {
 
     fn parse_expr_prime(&mut self) -> Option<(OperatorKind, AST)> {
         // expr'  -> (`+`|`-`) term expr' | epsilon
-        let looked = self.look_at();
+        let looked = self.look_at().unwrap();
         match looked.kind {
             TokenKind::Operator(ope_kind) => {
                 self.forward();
@@ -131,7 +131,7 @@ impl Parser {
 
     fn parse_term_prime(&mut self) -> Option<(OperatorKind, AST)> {
         // term'  -> (`*`|`/`) unary term' | epsilon
-        let looked = self.look_at();
+        let looked = self.look_at().unwrap();
         match looked.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_multiplication() => {
                 self.forward();
@@ -156,7 +156,7 @@ impl Parser {
 
     fn parse_unary(&mut self) -> AST {
         // unary  -> (`+`|`-`) factor | factor
-        let looked = self.look_at();
+        let looked = self.look_at().unwrap();
         let ope = match looked.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_addition() => {
                 self.forward();
@@ -177,12 +177,12 @@ impl Parser {
 
     fn parse_factor(&mut self) -> AST {
         // factor -> `(` expr `)` | number
-        let looked = self.look_at();
+        let looked = self.look_at().unwrap();
         match looked.kind {
             TokenKind::Paren(paren_kind) if paren_kind.is_literal('(') => {
                 self.forward();
                 let expr = self.parse_expr();
-                let close_token = self.look_and_forward();
+                let close_token = self.look_and_forward().unwrap();
                 match close_token.kind {
                     TokenKind::Paren(paren_kind) if paren_kind.is_literal(')') => expr,
                     _ => unreachable!(),
@@ -195,7 +195,7 @@ impl Parser {
 
     fn parse_number(&mut self) -> AST {
         // number -> integer
-        let looked = self.look_and_forward();
+        let looked = self.look_and_forward().unwrap();
         let kind = match looked.kind {
             TokenKind::Integer(n) => ASTKind::Integer(n),
             _ => unreachable!(),

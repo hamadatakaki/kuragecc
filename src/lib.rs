@@ -10,10 +10,10 @@ trait Inspector {
     fn forward(&mut self);
     fn backward(&mut self);
     fn at_end(&self) -> bool;
-    fn look_at(&self) -> Self::Yielded;
-    fn look_next(&self) -> Self::Yielded;
-    fn look_prev(&self) -> Self::Yielded;
-    fn look_and_forward(&mut self) -> Self::Yielded;
+    fn look_at(&self) -> Option<Self::Yielded>;
+    fn look_next(&self) -> Option<Self::Yielded>;
+    fn look_prev(&self) -> Option<Self::Yielded>;
+    fn look_and_forward(&mut self) -> Option<Self::Yielded>;
 }
 
 trait Place {

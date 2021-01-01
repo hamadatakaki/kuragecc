@@ -3,10 +3,9 @@ use kuragecc::codegen::CodeGenerator;
 use kuragecc::lexer::Lexer;
 use kuragecc::parser::Parser;
 
-// TODO: 一度動くものを書いた後に、look_at系をOptionalに書き直す.
-
 fn main() {
     let code = "return 0;";
+
     let mut lexer = Lexer::new(code);
     lexer.tokenize();
     let tokens = lexer.tokens;
@@ -19,8 +18,9 @@ fn main() {
         for token in tokens.clone() {
             println!("{}", token);
         }
-
+        println!();
         visualize_ast(ast.clone());
+        println!();
     }
 
     let mut generator = CodeGenerator::new(ast);

@@ -26,7 +26,7 @@ impl Lexer {
 
     fn rec_tokenize(&mut self) {
         if !self.at_end() {
-            let looked = self.look_at();
+            let looked = self.look_at().unwrap();
             if looked.is_ascii_digit() {
                 // Number
                 self.tokenize_integer();
@@ -53,7 +53,7 @@ impl Lexer {
         let start = self.look;
         let mut nums = vec![];
         while !self.at_end() {
-            let c = self.look_at();
+            let c = self.look_at().unwrap();
             if c.is_ascii_digit() {
                 nums.push(c);
                 self.forward();
@@ -72,7 +72,7 @@ impl Lexer {
         let start = self.look;
         let mut words = vec![];
         while !self.at_end() {
-            let c = self.look_at();
+            let c = self.look_at().unwrap();
             if c.is_ascii_alphanumeric() {
                 words.push(c);
                 self.forward();
@@ -92,7 +92,7 @@ impl Lexer {
 
     fn tokenize_delimiter(&mut self) {
         let start = self.look;
-        let looked = self.look_and_forward();
+        let looked = self.look_and_forward().unwrap();
         let kind = TokenKind::Delimiter(DelimiterKind::from_literal(looked));
         let token = Token::new(kind, vec![looked], (start, 1));
         self.tokens.push(token);
@@ -100,7 +100,7 @@ impl Lexer {
 
     fn tokenize_paren(&mut self) {
         let start = self.look;
-        let looked = self.look_and_forward();
+        let looked = self.look_and_forward().unwrap();
         let kind = TokenKind::Paren(ParenKind::from_literal(looked));
         let token = Token::new(kind, vec![looked], (start, 1));
         self.tokens.push(token);
@@ -108,7 +108,7 @@ impl Lexer {
 
     fn tokenize_operator(&mut self) {
         let start = self.look;
-        let looked = self.look_and_forward();
+        let looked = self.look_and_forward().unwrap();
         let kind = TokenKind::Operator(OperatorKind::from_literal(looked));
         let token = Token::new(kind, vec![looked], (start, 1));
         self.tokens.push(token);
@@ -130,19 +130,19 @@ impl Inspector for Lexer {
         self.look >= self.code.len()
     }
 
-    fn look_at(&self) -> char {
-        self.code[self.look]
+    fn look_at(&self) -> Option<char> {
+        self.code.get(self.look).map(|&c| c)
     }
 
-    fn look_prev(&self) -> char {
-        self.code[self.look - 1]
+    fn look_prev(&self) -> Option<char> {
+        self.code.get(self.look - 1).map(|&c| c)
     }
 
-    fn look_next(&self) -> char {
-        self.code[self.look + 1]
+    fn look_next(&self) -> Option<char> {
+        self.code.get(self.look + 1).map(|&c| c)
     }
 
-    fn look_and_forward(&mut self) -> char {
+    fn look_and_forward(&mut self) -> Option<char> {
         self.forward();
         self.look_prev()
     }
