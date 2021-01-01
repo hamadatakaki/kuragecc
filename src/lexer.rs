@@ -1,5 +1,5 @@
 use super::token::literal::{
-    is_operator_kind, DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
+    DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
 };
 use super::token::{Token, TokenKind};
 use super::Inspector;
@@ -112,7 +112,7 @@ impl Lexer {
         while !self.at_end() {
             let c = self.look_at().unwrap();
             if OperatorKind::contains(String::from(c)) {
-                if is_operator_kind(&words, c) {
+                if _is_operator_kind(&words, c) {
                     words.push(c);
                     self.forward();
                 } else {
@@ -160,4 +160,10 @@ impl Inspector for Lexer {
         self.forward();
         self.look_prev()
     }
+}
+
+fn _is_operator_kind(literals: &Vec<char>, add: char) -> bool {
+    let literals = literals.iter().collect::<String>();
+    let add = String::from(add);
+    OperatorKind::contains(vec![literals, add].concat())
 }

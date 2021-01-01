@@ -52,21 +52,84 @@ impl Parser {
     }
 
     pub fn parse(&mut self) {
-        self.ast = Some(self.parse_stmt());
+        self.ast = Some(self.parse_block());
     }
 
-    fn parse_stmt(&mut self) -> AST {
-        // stmt   -> return
-        self.parse_return()
+    fn parse_block(&mut self) -> AST {
+        // block  -> stmt* return
+        let mut token = self.look_at().unwrap();
+        let start = token.pos;
+        let mut lines = vec![];
+
+        loop {
+            match token.kind {
+                TokenKind::Reserved(reserved) if reserved.is_literal(String::from("return")) => {
+                    let ast = self.parse_return();
+                    lines.push(ast);
+                    break;
+                }
+                _ => {
+                    let ast = self.parse_stmt();
+                    lines.push(ast);
+                }
+            }
+            token = self.look_at().unwrap();
+        }
+
+        let end = token.pos;
+        let pos = start.extend_to(end);
+
+        let kind = ASTKind::Block(lines);
+        AST::new(kind, pos)
     }
 
     fn parse_return(&mut self) -> AST {
-        // return -> `return` expr `;`
+        // return -> `return` (identifier | expr) `;`
         let ret = self.look_and_forward().unwrap();
-        let expr = self.parse_expr();
+        let token = self.look_at().unwrap();
+        let expr = match token.kind {
+            TokenKind::Identifier(name) => {
+                let kind = ASTKind::Identifier(name);
+                AST::new(kind, token.pos)
+            }
+            _ => self.parse_expr(),
+        };
         let semicolon = self.look_and_forward().unwrap();
         let pos = ret.pos.extend_to(semicolon.pos);
         let kind = ASTKind::Return(Box::new(expr));
+        AST::new(kind, pos)
+    }
+
+    fn parse_stmt(&mut self) -> AST {
+        // stmt   -> assigin
+        self.parse_assign()
+    }
+
+    fn parse_assign(&mut self) -> AST {
+        // assign -> identifier `=` expr `;`
+        let id = self.look_and_forward().unwrap();
+        let start = id.pos;
+        let id = if let TokenKind::Identifier(name) = id.kind {
+            let kind = ASTKind::Identifier(name);
+            AST::new(kind, id.pos)
+        } else {
+            unreachable!()
+        };
+        let equal = self.look_and_forward().unwrap();
+        match equal.kind {
+            TokenKind::Operator(ope) if ope.is_literal(String::from("=")) => {}
+            _ => unreachable!(),
+        }
+        let expr = self.parse_expr();
+        let semicolon = self.look_and_forward().unwrap();
+        let end = semicolon.pos;
+        match semicolon.kind {
+            TokenKind::Delimiter(delimiter) if delimiter.is_literal(';') => {}
+            _ => unreachable!(),
+        }
+
+        let kind = ASTKind::Assign(Box::new(id), Box::new(expr));
+        let pos = start.extend_to(end);
         AST::new(kind, pos)
     }
 

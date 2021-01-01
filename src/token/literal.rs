@@ -181,9 +181,3 @@ impl TerminalSymbol for OperatorKind {
         String::from(s)
     }
 }
-
-pub fn is_operator_kind(literals: &Vec<char>, add: char) -> bool {
-    let literals = literals.iter().collect::<String>();
-    let add = String::from(add);
-    OperatorKind::contains(vec![literals, add].concat())
-}
