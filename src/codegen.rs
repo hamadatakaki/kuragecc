@@ -2,8 +2,6 @@ use super::ast::{ASTKind, AST};
 use super::token::literal::OperatorKind;
 use std::collections::HashMap;
 
-// TODO: unimplementedとunreachableの使い分けをする.
-
 /*
     define i32 @main() {
         <name> = alloca i32
@@ -13,7 +11,6 @@ use std::collections::HashMap;
     }
 */
 
-// TODO: 変数管理の機構を追加する.
 pub struct VariableManager {
     count: usize,
     book: HashMap<String, String>,
@@ -71,7 +68,7 @@ impl CodeGenerator {
         self.lines.push(String::from("define i32 @main() {\n"));
         let stmts = match ast.kind {
             ASTKind::Block(stmts) => stmts,
-            _ => unimplemented!(),
+            _ => unreachable!(),
         };
         for stmt in stmts {
             match stmt.clone().kind {

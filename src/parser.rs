@@ -111,19 +111,19 @@ impl Parser {
         let start = id.pos;
         let name = match id.kind {
             TokenKind::Identifier(name) => name,
-            _ => unreachable!(),
+            _ => unimplemented!(),
         };
         let equal = self.look_and_forward().unwrap();
         match equal.kind {
             TokenKind::Operator(ope) if ope.is_literal(String::from("=")) => {}
-            _ => unreachable!(),
+            _ => unimplemented!(),
         }
         let expr = self.parse_expr();
         let semicolon = self.look_and_forward().unwrap();
         let end = semicolon.pos;
         match semicolon.kind {
             TokenKind::Delimiter(delimiter) if delimiter.is_literal(';') => {}
-            _ => unreachable!(),
+            _ => unimplemented!(),
         }
 
         let kind = ASTKind::Assign(name, Box::new(expr));
@@ -234,11 +234,11 @@ impl Parser {
                 let close_token = self.look_and_forward().unwrap();
                 match close_token.kind {
                     TokenKind::Paren(paren_kind) if paren_kind.is_literal(')') => expr,
-                    _ => unreachable!(),
+                    _ => unimplemented!(),
                 }
             }
             TokenKind::Integer(_) => self.parse_number(),
-            _ => unreachable!(),
+            _ => unimplemented!(),
         }
     }
 

@@ -166,7 +166,7 @@ impl TerminalSymbol for OperatorKind {
             "*" => OperatorKind::Times,
             "/" => OperatorKind::Devide,
             "=" => OperatorKind::Assign,
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
     }
 
