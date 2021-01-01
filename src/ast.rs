@@ -32,7 +32,7 @@ impl std::fmt::Display for AST {
     }
 }
 
-fn visualize_ast(ast: AST) {
+pub fn visualize_ast(ast: AST) {
     rec_visualize_ast(ast, 0);
 }
 
@@ -40,18 +40,18 @@ fn rec_visualize_ast(ast: AST, i: usize) {
     print!("{}", "  ".repeat(i));
     match ast.kind.clone() {
         ASTKind::Return(ast) => {
-            println!("return:");
+            println!("Return:");
             rec_visualize_ast(*ast, i + 1)
         }
         ASTKind::Binary(l, r, ope) => {
-            println!("{}:", ope.to_literal());
+            println!("Binary {}:", ope.to_literal());
             rec_visualize_ast(*l, i + 1);
             rec_visualize_ast(*r, i + 1);
         }
         ASTKind::Unary(factor, ope) => {
-            println!("{}:", ope.to_literal());
+            println!("Unary {}:", ope.to_literal());
             rec_visualize_ast(*factor, i + 1);
         }
-        ASTKind::Integer(n) => println!("{}:", n),
+        ASTKind::Integer(n) => println!("Integer {},", n),
     }
 }
