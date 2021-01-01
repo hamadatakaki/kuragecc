@@ -4,6 +4,16 @@ use super::Position;
 use literal::{DelimiterKind, OperatorKind, ParenKind, ReservedLiteral};
 
 #[derive(Debug, Clone)]
+pub enum TokenKind {
+    Reserved(ReservedLiteral),
+    Integer(u32),
+    Identifier(String),
+    Delimiter(DelimiterKind),
+    Paren(ParenKind),
+    Operator(OperatorKind),
+}
+
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub pos: Position,
@@ -27,18 +37,9 @@ impl Token {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if std::env::var("RUST_BACKTRACE").is_ok() {
-            write!(f, "Token<{}, {:?}>", self.to_string(), self.pos)
+            write!(f, "Token<`{}`, {:?}>", self.to_string(), self.pos)
         } else {
-            write!(f, "Token<{}>", self.to_string())
+            write!(f, "Token<`{}`>", self.to_string())
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum TokenKind {
-    Reserved(ReservedLiteral),
-    Integer(u32),
-    Delimiter(DelimiterKind),
-    Paren(ParenKind),
-    Operator(OperatorKind),
 }

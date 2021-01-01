@@ -1,5 +1,5 @@
 use super::token::literal::{
-    DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
+    is_operator_kind, DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
 };
 use super::token::{Token, TokenKind};
 use super::Inspector;
@@ -31,15 +31,15 @@ impl Lexer {
                 // Number
                 self.tokenize_integer();
             } else if looked.is_ascii_alphabetic() {
-                // Reserved
-                self.tokenize_reserved();
+                // Reserved or Identifier
+                self.tokenize_symbol();
             } else if DelimiterKind::contains(looked) {
                 // Delimiter
                 self.tokenize_delimiter();
             } else if ParenKind::contains(looked) {
                 // Paren
                 self.tokenize_paren();
-            } else if OperatorKind::contains(looked) {
+            } else if OperatorKind::contains(String::from(looked)) {
                 // Operator
                 self.tokenize_operator();
             } else {
@@ -68,7 +68,7 @@ impl Lexer {
         self.tokens.push(token);
     }
 
-    fn tokenize_reserved(&mut self) {
+    fn tokenize_symbol(&mut self) {
         let start = self.look;
         let mut words = vec![];
         while !self.at_end() {
@@ -81,10 +81,10 @@ impl Lexer {
             }
         }
         let s = words.iter().collect::<String>();
-        let kind = if ReservedLiteral::contains(s.as_str()) {
-            TokenKind::Reserved(ReservedLiteral::from_literal(&s))
+        let kind = if ReservedLiteral::contains(s.clone()) {
+            TokenKind::Reserved(ReservedLiteral::from_literal(s))
         } else {
-            unimplemented!()
+            TokenKind::Identifier(s)
         };
         let token = Token::new(kind, words, (start, self.look - start));
         self.tokens.push(token);
@@ -108,9 +108,23 @@ impl Lexer {
 
     fn tokenize_operator(&mut self) {
         let start = self.look;
-        let looked = self.look_and_forward().unwrap();
-        let kind = TokenKind::Operator(OperatorKind::from_literal(looked));
-        let token = Token::new(kind, vec![looked], (start, 1));
+        let mut words = vec![];
+        while !self.at_end() {
+            let c = self.look_at().unwrap();
+            if OperatorKind::contains(String::from(c)) {
+                if is_operator_kind(&words, c) {
+                    words.push(c);
+                    self.forward();
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+        let s = words.iter().collect::<String>();
+        let kind = TokenKind::Operator(OperatorKind::from_literal(s));
+        let token = Token::new(kind, words, (start, 1));
         self.tokens.push(token);
     }
 }

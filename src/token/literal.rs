@@ -14,29 +14,28 @@ pub enum ReservedLiteral {
     Return,
 }
 
-impl ReservedLiteral {
-    pub fn contains(word: &str) -> bool {
-        match word {
+impl TerminalSymbol for ReservedLiteral {
+    type SymbolLiteral = String;
+
+    fn contains(literal: String) -> bool {
+        match literal.as_str() {
             "return" => true,
             _ => false,
         }
     }
 
-    pub fn from_literal(word: &str) -> Self {
-        match word {
+    fn from_literal(literal: String) -> ReservedLiteral {
+        match literal.as_str() {
             "return" => ReservedLiteral::Return,
             _ => unreachable!(),
         }
     }
 
-    pub fn to_literal(&self) -> &str {
-        match self {
+    fn to_literal(&self) -> String {
+        let s = match self {
             ReservedLiteral::Return => "return",
-        }
-    }
-
-    pub fn is_literal(&self, literal: &str) -> bool {
-        self.to_literal() == literal
+        };
+        String::from(s)
     }
 }
 
@@ -112,6 +111,7 @@ impl TerminalSymbol for ParenKind {
 pub enum OperatorPriority {
     Addition,
     Multiplication,
+    Assignment,
 }
 
 impl OperatorPriority {
@@ -136,6 +136,7 @@ pub enum OperatorKind {
     Minus,
     Times,
     Devide,
+    Assign,
 }
 
 impl OperatorKind {
@@ -143,36 +144,46 @@ impl OperatorKind {
         match self {
             OperatorKind::Plus | OperatorKind::Minus => OperatorPriority::Addition,
             OperatorKind::Times | OperatorKind::Devide => OperatorPriority::Multiplication,
+            OperatorKind::Assign => OperatorPriority::Assignment,
         }
     }
 }
 
 impl TerminalSymbol for OperatorKind {
-    type SymbolLiteral = char;
+    type SymbolLiteral = String;
 
-    fn contains(word: char) -> bool {
-        match word {
-            '+' | '-' | '*' | '/' => true,
+    fn contains(literal: String) -> bool {
+        match literal.as_str() {
+            "+" | "-" | "*" | "/" | "=" => true,
             _ => false,
         }
     }
 
-    fn from_literal(word: char) -> OperatorKind {
-        match word {
-            '+' => OperatorKind::Plus,
-            '-' => OperatorKind::Minus,
-            '*' => OperatorKind::Times,
-            '/' => OperatorKind::Devide,
-            _ => unreachable!(),
+    fn from_literal(literal: String) -> OperatorKind {
+        match literal.as_str() {
+            "+" => OperatorKind::Plus,
+            "-" => OperatorKind::Minus,
+            "*" => OperatorKind::Times,
+            "/" => OperatorKind::Devide,
+            "=" => OperatorKind::Assign,
+            _ => unimplemented!(),
         }
     }
 
-    fn to_literal(&self) -> char {
-        match self {
-            OperatorKind::Plus => '+',
-            OperatorKind::Minus => '-',
-            OperatorKind::Times => '*',
-            OperatorKind::Devide => '/',
-        }
+    fn to_literal(&self) -> String {
+        let s = match self {
+            OperatorKind::Plus => "+",
+            OperatorKind::Minus => "-",
+            OperatorKind::Times => "*",
+            OperatorKind::Devide => "/",
+            OperatorKind::Assign => "=",
+        };
+        String::from(s)
     }
+}
+
+pub fn is_operator_kind(literals: &Vec<char>, add: char) -> bool {
+    let literals = literals.iter().collect::<String>();
+    let add = String::from(add);
+    OperatorKind::contains(vec![literals, add].concat())
 }

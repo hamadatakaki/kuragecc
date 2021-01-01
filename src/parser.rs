@@ -3,18 +3,6 @@ use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
 use super::{Inspector, Place};
 
-/*
-    stmt   -> return
-    return -> `return` expr `;`
-    expr   -> term expr'
-    expr'  -> (`+`|`-`) term expr' | epsilon
-    term   -> unary term'
-    term'  -> (`*`|`/`) unary term' | epsilon
-    unary  -> (`+`|`-`) factor | factor
-    factor -> `(` expr `)` | number
-    number -> integer
-*/
-
 pub struct Parser {
     tokens: Vec<Token>,
     pub ast: Option<AST>,

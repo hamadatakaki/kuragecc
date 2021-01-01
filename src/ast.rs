@@ -1,6 +1,19 @@
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::Position;
 
+/*
+    stmt   -> assigin | return
+    assign -> identifier `=` expr `;`
+    return -> `return` (expr | identifier) `;`
+    expr   -> term expr'
+    expr'  -> (`+`|`-`) term expr' | epsilon
+    term   -> unary term'
+    term'  -> (`*`|`/`) unary term' | epsilon
+    unary  -> (`+`|`-`) factor | factor
+    factor -> `(` expr `)` | number
+    number -> integer
+*/
+
 #[derive(Debug, Clone)]
 pub enum ASTKind {
     Return(Box<AST>),

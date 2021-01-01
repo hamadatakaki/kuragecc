@@ -44,6 +44,7 @@ impl CodeGenerator {
                     OperatorKind::Minus => l - r,
                     OperatorKind::Times => l * r,
                     OperatorKind::Devide => l / r,
+                    _ => unimplemented!(),
                 }
             }
             ASTKind::Unary(factor, ope) => {
