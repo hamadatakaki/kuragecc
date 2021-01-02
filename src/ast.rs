@@ -1,5 +1,5 @@
 use super::token::literal::{OperatorKind, TerminalSymbol};
-use super::Position;
+use super::Location;
 
 /*
     block  -> stmt* return
@@ -29,12 +29,12 @@ pub enum ASTKind {
 #[derive(Debug, Clone)]
 pub struct AST {
     pub kind: ASTKind,
-    pub pos: Position,
+    pub location: Location,
 }
 
 impl AST {
-    pub fn new(kind: ASTKind, pos: Position) -> Self {
-        Self { kind, pos }
+    pub fn new(kind: ASTKind, location: Location) -> Self {
+        Self { kind, location }
     }
 }
 

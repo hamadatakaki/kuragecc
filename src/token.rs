@@ -1,6 +1,6 @@
 pub mod literal;
 
-use super::Position;
+use super::Location;
 use literal::{DelimiterKind, OperatorKind, ParenKind, ReservedLiteral};
 
 #[derive(Debug, Clone)]
@@ -16,19 +16,20 @@ pub enum TokenKind {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
-    pub pos: Position,
+    pub location: Location,
     expression: Vec<char>,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, expression: Vec<char>, pos: Position) -> Self {
+    pub fn new(kind: TokenKind, location: Location, expression: Vec<char>) -> Self {
         Self {
             kind,
-            pos,
+            location,
             expression,
         }
     }
 
+    // TODO: expressionではなくkindを用いた実装に帰る.
     fn to_string(&self) -> String {
         self.expression.iter().collect::<String>()
     }
@@ -37,7 +38,7 @@ impl Token {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if std::env::var("RUST_BACKTRACE").is_ok() {
-            write!(f, "Token<`{}`, {:?}>", self.to_string(), self.pos)
+            write!(f, "Token<`{}`, [{}]>", self.to_string(), self.location)
         } else {
             write!(f, "Token<`{}`>", self.to_string())
         }

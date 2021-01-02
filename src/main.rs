@@ -6,14 +6,29 @@ use kuragecc::parser::Parser;
 use std::fs;
 
 fn main() {
-    let code = fs::read_to_string("example/parser_error0.tmpc").expect("File Input Error");
+    let paths = vec![
+        "example/main0.tmpc",
+        "example/main1.tmpc",
+        "example/lexer_error.tmpc",
+        "example/parser_error0.tmpc",
+    ];
+    for path in paths {
+        println!("=> {}\n", path);
+        compile(path);
+    }
+}
+
+fn compile(path: &str) {
+    let code = fs::read_to_string(path).expect("File Input Error");
+
+    println!("```\n{}```\n", code);
 
     let mut lexer = Lexer::new(&code);
     let tokens = match lexer.tokenize() {
         Ok(tokens) => tokens,
         Err(errors) => {
-            println!("{:?}", errors);
-            std::process::exit(1);
+            println!("{:?}\n", errors);
+            return;
         }
     };
 
@@ -28,8 +43,8 @@ fn main() {
     let ast = match parser.parse() {
         Ok(ast) => ast,
         Err(errors) => {
-            println!("{:?}", errors);
-            std::process::exit(1);
+            println!("{:?}\n", errors);
+            return;
         }
     };
 

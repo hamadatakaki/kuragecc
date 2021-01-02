@@ -2,7 +2,7 @@ use super::ast::{ASTKind, AST};
 use super::error::{ParserError, ParserErrorKind};
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
-use super::{Inspector, Place};
+use super::Inspector;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -31,7 +31,7 @@ impl Parser {
     fn parse_block(&mut self) -> AST {
         // block  -> stmt* return
         let mut token = self.look_at().unwrap();
-        let start = token.pos;
+        let start = token.location;
         let mut lines = vec![];
 
         loop {
@@ -50,19 +50,19 @@ impl Parser {
         }
 
         if !self.at_end() {
-            let start = self.look_at().unwrap().pos;
-            let end = self.look_tail().unwrap().pos;
-            let pos = start.extend_to(end);
+            let start = self.look_at().unwrap().location;
+            let end = self.look_tail().unwrap().location;
+            let loc = start.extend_to(end);
             let kind = ParserErrorKind::BlockDoesNotEndAtFirstReturn;
-            let error = ParserError::new(kind, pos);
+            let error = ParserError::new(kind, loc);
             self.errors.push(error);
         }
 
-        let end = token.pos;
-        let pos = start.extend_to(end);
+        let end = token.location;
+        let loc = start.extend_to(end);
 
         let kind = ASTKind::Block(lines);
-        AST::new(kind, pos)
+        AST::new(kind, loc)
     }
 
     fn parse_return(&mut self) -> AST {
@@ -72,14 +72,15 @@ impl Parser {
         let expr = match token.kind {
             TokenKind::Identifier(name) => {
                 let kind = ASTKind::Identifier(name);
-                AST::new(kind, token.pos)
+                self.forward();
+                AST::new(kind, token.location)
             }
             _ => self.parse_expr(),
         };
         let semicolon = self.look_and_forward().unwrap();
-        let pos = ret.pos.extend_to(semicolon.pos);
+        let loc = ret.location.extend_to(semicolon.location);
         let kind = ASTKind::Return(Box::new(expr));
-        AST::new(kind, pos)
+        AST::new(kind, loc)
     }
 
     fn parse_stmt(&mut self) -> AST {
@@ -90,7 +91,7 @@ impl Parser {
     fn parse_assign(&mut self) -> AST {
         // assign -> identifier `=` expr `;`
         let id = self.look_and_forward().unwrap();
-        let start = id.pos;
+        let start = id.location;
         let name = match id.kind {
             TokenKind::Identifier(name) => name,
             _ => unimplemented!(),
@@ -102,15 +103,15 @@ impl Parser {
         }
         let expr = self.parse_expr();
         let semicolon = self.look_and_forward().unwrap();
-        let end = semicolon.pos;
+        let end = semicolon.location;
         match semicolon.kind {
             TokenKind::Delimiter(delimiter) if delimiter.is_literal(';') => {}
             _ => unimplemented!(),
         }
 
         let kind = ASTKind::Assign(name, Box::new(expr));
-        let pos = start.extend_to(end);
-        AST::new(kind, pos)
+        let loc = start.extend_to(end);
+        AST::new(kind, loc)
     }
 
     fn parse_expr(&mut self) -> AST {
@@ -118,9 +119,9 @@ impl Parser {
         let term_left = self.parse_term();
         match self.parse_expr_prime() {
             Some((ope, term_right)) => {
-                let pos = term_left.pos.extend_to(term_right.pos);
+                let loc = term_left.location.extend_to(term_right.location);
                 let kind = ASTKind::Binary(Box::new(term_left), Box::new(term_right), ope);
-                AST::new(kind, pos)
+                AST::new(kind, loc)
             }
             None => term_left,
         }
@@ -135,9 +136,9 @@ impl Parser {
                 let term_left = self.parse_term();
                 let ast = match self.parse_expr_prime() {
                     Some((ope, term_right)) => {
-                        let pos = term_left.pos.extend_to(term_right.pos);
+                        let loc = term_left.location.extend_to(term_right.location);
                         let kind = ASTKind::Binary(Box::new(term_left), Box::new(term_right), ope);
-                        AST::new(kind, pos)
+                        AST::new(kind, loc)
                     }
                     None => term_left,
                 };
@@ -152,9 +153,9 @@ impl Parser {
         let unary_left = self.parse_unary();
         match self.parse_term_prime() {
             Some((ope, unary_right)) => {
-                let pos = unary_left.pos.extend_to(unary_right.pos);
+                let loc = unary_left.location.extend_to(unary_right.location);
                 let kind = ASTKind::Binary(Box::new(unary_left), Box::new(unary_right), ope);
-                AST::new(kind, pos)
+                AST::new(kind, loc)
             }
             None => unary_left,
         }
@@ -169,13 +170,13 @@ impl Parser {
                 let unary_left = self.parse_unary();
                 let ast = match self.parse_term_prime() {
                     Some((ope, unary_right)) => {
-                        let pos = unary_left.pos.extend_to(unary_right.pos);
+                        let loc = unary_left.location.extend_to(unary_right.clone().location);
                         let kind = ASTKind::Binary(
                             Box::new(unary_left.clone()),
                             Box::new(unary_right.clone()),
                             ope,
                         );
-                        AST::new(kind, pos)
+                        AST::new(kind, loc)
                     }
                     None => unary_left,
                 };
@@ -198,9 +199,9 @@ impl Parser {
         let factor = self.parse_factor();
         match ope {
             Some(OperatorKind::Minus) => {
-                let pos = looked.pos.extend_to(factor.pos);
+                let loc = looked.location.extend_to(factor.clone().location);
                 let kind = ASTKind::Unary(Box::new(factor), OperatorKind::Minus);
-                AST::new(kind, pos)
+                AST::new(kind, loc)
             }
             _ => factor,
         }
@@ -231,8 +232,7 @@ impl Parser {
             TokenKind::Integer(n) => ASTKind::Integer(n),
             _ => unreachable!(),
         };
-        let pos = looked.pos;
-        AST::new(kind, pos)
+        AST::new(kind, looked.location)
     }
 }
 
@@ -241,10 +241,6 @@ impl Inspector for Parser {
 
     fn forward(&mut self) {
         self.look += 1;
-    }
-
-    fn backward(&mut self) {
-        self.look -= 1;
     }
 
     fn at_end(&self) -> bool {

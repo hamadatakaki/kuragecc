@@ -1,4 +1,4 @@
-use super::Position;
+use super::Location;
 
 #[derive(Debug, Clone)]
 pub enum LexerErrorKind {
@@ -8,17 +8,17 @@ pub enum LexerErrorKind {
 #[derive(Debug, Clone)]
 pub struct LexerError {
     kind: LexerErrorKind,
-    pos: Position,
+    loc: Location,
 }
 
 impl LexerError {
-    pub fn new(kind: LexerErrorKind, pos: Position) -> Self {
-        Self { kind, pos }
+    pub fn new(kind: LexerErrorKind, loc: Location) -> Self {
+        Self { kind, loc }
     }
 
-    pub fn invalid_char(c: char, pos: Position) -> Self {
+    pub fn invalid_char(c: char, loc: Location) -> Self {
         let kind = LexerErrorKind::InvalidCharError(c);
-        Self::new(kind, pos)
+        Self::new(kind, loc)
     }
 }
 
@@ -30,11 +30,11 @@ pub enum ParserErrorKind {
 #[derive(Debug, Clone)]
 pub struct ParserError {
     kind: ParserErrorKind,
-    pos: Position,
+    loc: Location,
 }
 
 impl ParserError {
-    pub fn new(kind: ParserErrorKind, pos: Position) -> Self {
-        Self { kind, pos }
+    pub fn new(kind: ParserErrorKind, loc: Location) -> Self {
+        Self { kind, loc }
     }
 }

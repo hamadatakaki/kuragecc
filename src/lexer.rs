@@ -3,7 +3,7 @@ use super::token::literal::{
     DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
 };
 use super::token::{Token, TokenKind};
-use super::Inspector;
+use super::{Inspector, Location, Position};
 
 macro_rules! is_ope_kind {
     ($vec: expr, $c: expr) => {{
@@ -16,8 +16,9 @@ macro_rules! is_ope_kind {
 pub struct Lexer {
     code: Vec<char>,
     look: usize,
+    position: Position,
     tokens: Vec<Token>,
-    pub errors: Vec<LexerError>,
+    errors: Vec<LexerError>,
 }
 
 impl Lexer {
@@ -26,6 +27,7 @@ impl Lexer {
         Self {
             code,
             look: 0,
+            position: Position::initialize(),
             tokens: Vec::new(),
             errors: Vec::new(),
         }
@@ -43,6 +45,7 @@ impl Lexer {
     fn rec_tokenize(&mut self) {
         if !self.at_end() {
             let looked = self.look_at().unwrap();
+            let start = self.position;
             if looked.is_ascii_digit() {
                 // Number
                 self.tokenize_integer();
@@ -62,15 +65,16 @@ impl Lexer {
                 // whitespace
                 self.forward();
             } else {
-                match looked {
+                if looked == '\n' {
                     // indention
-                    '\n' | '\r' => self.forward(),
+                    self.forward();
+                } else {
                     // invalid character
-                    _ => {
-                        let error = LexerError::invalid_char(looked, (self.look, 1));
-                        self.errors.push(error);
-                        self.forward()
-                    }
+                    self.forward();
+                    let end = self.position;
+                    let loc = Location::new(start, end);
+                    let error = LexerError::invalid_char(looked, loc);
+                    self.errors.push(error);
                 }
             }
             self.rec_tokenize()
@@ -78,7 +82,7 @@ impl Lexer {
     }
 
     fn tokenize_integer(&mut self) {
-        let start = self.look;
+        let start = self.position;
         let mut nums = vec![];
         while !self.at_end() {
             let c = self.look_at().unwrap();
@@ -89,15 +93,16 @@ impl Lexer {
                 break;
             }
         }
-        let s = nums.iter().collect::<String>();
-        let n = s.parse::<u32>().unwrap();
+        let end = self.position;
+        let loc = Location::new(start, end);
+        let n = nums.iter().collect::<String>().parse::<u32>().unwrap();
         let kind = TokenKind::Integer(n);
-        let token = Token::new(kind, nums, (start, self.look - start));
+        let token = Token::new(kind, loc, nums);
         self.tokens.push(token);
     }
 
     fn tokenize_symbol(&mut self) {
-        let start = self.look;
+        let start = self.position;
         let mut words = vec![];
         while !self.at_end() {
             let c = self.look_at().unwrap();
@@ -108,34 +113,42 @@ impl Lexer {
                 break;
             }
         }
+        let end = self.position;
+        let loc = Location::new(start, end);
         let s = words.iter().collect::<String>();
         let kind = if ReservedLiteral::contains(s.clone()) {
             TokenKind::Reserved(ReservedLiteral::from_literal(s))
         } else {
             TokenKind::Identifier(s)
         };
-        let token = Token::new(kind, words, (start, self.look - start));
+        let token = Token::new(kind, loc, words);
         self.tokens.push(token);
     }
 
     fn tokenize_delimiter(&mut self) {
-        let start = self.look;
+        let start = self.position;
         let looked = self.look_and_forward().unwrap();
+        let end = self.position;
+        let loc = Location::new(start, end);
         let kind = TokenKind::Delimiter(DelimiterKind::from_literal(looked));
-        let token = Token::new(kind, vec![looked], (start, 1));
+        let words = vec![looked];
+        let token = Token::new(kind, loc, words);
         self.tokens.push(token);
     }
 
     fn tokenize_paren(&mut self) {
-        let start = self.look;
+        let start = self.position;
         let looked = self.look_and_forward().unwrap();
+        let end = self.position;
+        let loc = Location::new(start, end);
         let kind = TokenKind::Paren(ParenKind::from_literal(looked));
-        let token = Token::new(kind, vec![looked], (start, 1));
+        let words = vec![looked];
+        let token = Token::new(kind, loc, words);
         self.tokens.push(token);
     }
 
     fn tokenize_operator(&mut self) {
-        let start = self.look;
+        let start = self.position;
         let mut words = vec![];
         while !self.at_end() {
             let c = self.look_at().unwrap();
@@ -150,9 +163,11 @@ impl Lexer {
                 break;
             }
         }
+        let end = self.position;
+        let loc = Location::new(start, end);
         let s = words.iter().collect::<String>();
         let kind = TokenKind::Operator(OperatorKind::from_literal(s));
-        let token = Token::new(kind, words, (start, 1));
+        let token = Token::new(kind, loc, words);
         self.tokens.push(token);
     }
 }
@@ -161,11 +176,13 @@ impl Inspector for Lexer {
     type Yielded = char;
 
     fn forward(&mut self) {
+        let looked = self.look_at().unwrap();
+        if looked == '\n' {
+            self.position.indention();
+        } else {
+            self.position.forward();
+        }
         self.look += 1;
-    }
-
-    fn backward(&mut self) {
-        self.look -= 1;
     }
 
     fn at_end(&self) -> bool {
