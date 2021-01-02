@@ -1,13 +1,23 @@
+use super::error::LexerError;
 use super::token::literal::{
     DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
 };
 use super::token::{Token, TokenKind};
 use super::Inspector;
 
+macro_rules! is_ope_kind {
+    ($vec: expr, $c: expr) => {{
+        let literals = $vec.iter().collect::<String>();
+        let add = String::from($c);
+        OperatorKind::contains(vec![literals, add].concat())
+    }};
+}
+
 pub struct Lexer {
     code: Vec<char>,
-    pub tokens: Vec<Token>,
     look: usize,
+    tokens: Vec<Token>,
+    pub errors: Vec<LexerError>,
 }
 
 impl Lexer {
@@ -15,13 +25,19 @@ impl Lexer {
         let code = code.chars().collect::<Vec<char>>();
         Self {
             code,
-            tokens: Vec::new(),
             look: 0,
+            tokens: Vec::new(),
+            errors: Vec::new(),
         }
     }
 
-    pub fn tokenize(&mut self) {
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, Vec<LexerError>> {
         self.rec_tokenize();
+        if self.errors.is_empty() {
+            Ok(self.tokens.clone())
+        } else {
+            Err(self.errors.clone())
+        }
     }
 
     fn rec_tokenize(&mut self) {
@@ -42,8 +58,20 @@ impl Lexer {
             } else if OperatorKind::contains(String::from(looked)) {
                 // Operator
                 self.tokenize_operator();
-            } else {
+            } else if looked.is_ascii_whitespace() {
+                // whitespace
                 self.forward();
+            } else {
+                match looked {
+                    // indention
+                    '\n' | '\r' => self.forward(),
+                    // invalid character
+                    _ => {
+                        let error = LexerError::invalid_char(looked, (self.look, 1));
+                        self.errors.push(error);
+                        self.forward()
+                    }
+                }
             }
             self.rec_tokenize()
         }
@@ -112,7 +140,7 @@ impl Lexer {
         while !self.at_end() {
             let c = self.look_at().unwrap();
             if OperatorKind::contains(String::from(c)) {
-                if _is_operator_kind(&words, c) {
+                if is_ope_kind!(&words, c) {
                     words.push(c);
                     self.forward();
                 } else {
@@ -160,10 +188,4 @@ impl Inspector for Lexer {
         self.forward();
         self.look_prev()
     }
-}
-
-fn _is_operator_kind(literals: &Vec<char>, add: char) -> bool {
-    let literals = literals.iter().collect::<String>();
-    let add = String::from(add);
-    OperatorKind::contains(vec![literals, add].concat())
 }

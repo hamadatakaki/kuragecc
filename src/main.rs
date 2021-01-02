@@ -6,11 +6,16 @@ use kuragecc::parser::Parser;
 use std::fs;
 
 fn main() {
-    let code = fs::read_to_string("example/main1.tmpc").expect("File Input Error");
+    let code = fs::read_to_string("example/main2.tmpc").expect("File Input Error");
 
     let mut lexer = Lexer::new(&code);
-    lexer.tokenize();
-    let tokens = lexer.tokens;
+    let tokens = match lexer.tokenize() {
+        Ok(tokens) => tokens,
+        Err(errors) => {
+            println!("{:?}", errors);
+            std::process::exit(1);
+        }
+    };
 
     if std::env::var("RUST_BACKTRACE").is_ok() {
         for token in tokens.clone() {
