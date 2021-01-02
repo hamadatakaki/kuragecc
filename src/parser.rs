@@ -10,39 +10,6 @@ pub struct Parser {
     errors: Vec<ParserError>,
 }
 
-impl Inspector for Parser {
-    type Yielded = Token;
-
-    fn forward(&mut self) {
-        self.look += 1;
-    }
-
-    fn backward(&mut self) {
-        self.look -= 1;
-    }
-
-    fn at_end(&self) -> bool {
-        self.look >= self.tokens.len()
-    }
-
-    fn look_at(&self) -> Option<Token> {
-        self.tokens.get(self.look).map(|t| t.clone())
-    }
-
-    fn look_prev(&self) -> Option<Token> {
-        self.tokens.get(self.look - 1).map(|t| t.clone())
-    }
-
-    fn look_next(&self) -> Option<Token> {
-        self.tokens.get(self.look + 1).map(|t| t.clone())
-    }
-
-    fn look_and_forward(&mut self) -> Option<Token> {
-        self.forward();
-        self.look_prev()
-    }
-}
-
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
@@ -50,11 +17,6 @@ impl Parser {
             look: 0,
             errors: Vec::new(),
         }
-    }
-
-    pub fn look_tail(&self) -> Token {
-        let tail = self.tokens.len() - 1;
-        self.tokens.get(tail).unwrap().clone()
     }
 
     pub fn parse(&mut self) -> Result<AST, Vec<ParserError>> {
@@ -89,7 +51,7 @@ impl Parser {
 
         if !self.at_end() {
             let start = self.look_at().unwrap().pos;
-            let end = self.look_tail().pos;
+            let end = self.look_tail().unwrap().pos;
             let pos = start.extend_to(end);
             let kind = ParserErrorKind::BlockDoesNotEndAtFirstReturn;
             let error = ParserError::new(kind, pos);
@@ -271,5 +233,47 @@ impl Parser {
         };
         let pos = looked.pos;
         AST::new(kind, pos)
+    }
+}
+
+impl Inspector for Parser {
+    type Yielded = Token;
+
+    fn forward(&mut self) {
+        self.look += 1;
+    }
+
+    fn backward(&mut self) {
+        self.look -= 1;
+    }
+
+    fn at_end(&self) -> bool {
+        self.look >= self.tokens.len()
+    }
+
+    fn look_at(&self) -> Option<Token> {
+        self.tokens.get(self.look).map(|t| t.clone())
+    }
+
+    fn look_prev(&self) -> Option<Token> {
+        self.tokens.get(self.look - 1).map(|t| t.clone())
+    }
+
+    fn look_next(&self) -> Option<Token> {
+        self.tokens.get(self.look + 1).map(|t| t.clone())
+    }
+
+    fn look_and_forward(&mut self) -> Option<Token> {
+        self.forward();
+        self.look_prev()
+    }
+
+    fn look_head(&self) -> Option<Token> {
+        self.tokens.get(0).map(|t| t.clone())
+    }
+
+    fn look_tail(&self) -> Option<Token> {
+        let tail = self.tokens.len() - 1;
+        self.tokens.get(tail).map(|t| t.clone())
     }
 }

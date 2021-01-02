@@ -15,6 +15,8 @@ trait Inspector {
     fn look_next(&self) -> Option<Self::Yielded>;
     fn look_prev(&self) -> Option<Self::Yielded>;
     fn look_and_forward(&mut self) -> Option<Self::Yielded>;
+    fn look_head(&self) -> Option<Self::Yielded>;
+    fn look_tail(&self) -> Option<Self::Yielded>;
 }
 
 trait Place {

@@ -188,4 +188,13 @@ impl Inspector for Lexer {
         self.forward();
         self.look_prev()
     }
+
+    fn look_head(&self) -> Option<char> {
+        self.code.get(0).map(|&c| c)
+    }
+
+    fn look_tail(&self) -> Option<char> {
+        let tail = self.code.len() - 1;
+        self.code.get(tail).map(|&c| c)
+    }
 }
