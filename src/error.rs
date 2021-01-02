@@ -21,3 +21,20 @@ impl LexerError {
         Self::new(kind, pos)
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum ParserErrorKind {
+    BlockDoesNotEndAtFirstReturn,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParserError {
+    kind: ParserErrorKind,
+    pos: Position,
+}
+
+impl ParserError {
+    pub fn new(kind: ParserErrorKind, pos: Position) -> Self {
+        Self { kind, pos }
+    }
+}

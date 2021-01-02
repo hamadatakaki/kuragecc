@@ -1,12 +1,13 @@
 use super::ast::{ASTKind, AST};
+use super::error::{ParserError, ParserErrorKind};
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
 use super::{Inspector, Place};
 
 pub struct Parser {
     tokens: Vec<Token>,
-    pub ast: Option<AST>,
     look: usize,
+    errors: Vec<ParserError>,
 }
 
 impl Inspector for Parser {
@@ -46,13 +47,23 @@ impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
-            ast: None,
             look: 0,
+            errors: Vec::new(),
         }
     }
 
-    pub fn parse(&mut self) {
-        self.ast = Some(self.parse_block());
+    pub fn look_tail(&self) -> Token {
+        let tail = self.tokens.len() - 1;
+        self.tokens.get(tail).unwrap().clone()
+    }
+
+    pub fn parse(&mut self) -> Result<AST, Vec<ParserError>> {
+        let ast = self.parse_block();
+        if self.errors.is_empty() {
+            Ok(ast)
+        } else {
+            Err(self.errors.clone())
+        }
     }
 
     fn parse_block(&mut self) -> AST {
@@ -74,6 +85,15 @@ impl Parser {
                 }
             }
             token = self.look_at().unwrap();
+        }
+
+        if !self.at_end() {
+            let start = self.look_at().unwrap().pos;
+            let end = self.look_tail().pos;
+            let pos = start.extend_to(end);
+            let kind = ParserErrorKind::BlockDoesNotEndAtFirstReturn;
+            let error = ParserError::new(kind, pos);
+            self.errors.push(error);
         }
 
         let end = token.pos;
