@@ -1,16 +1,16 @@
 pub mod literal;
 
 use super::Location;
-use literal::{DelimiterKind, OperatorKind, ParenKind, ReservedLiteral};
+use literal::{DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol};
 
 #[derive(Debug, Clone)]
 pub enum TokenKind {
-    Reserved(ReservedLiteral),
-    Integer(u32),
-    Identifier(String),
     Delimiter(DelimiterKind),
-    Paren(ParenKind),
+    Identifier(String),
+    Integer(u32),
     Operator(OperatorKind),
+    Paren(ParenKind),
+    Reserved(ReservedLiteral),
 }
 
 #[derive(Debug, Clone)]
@@ -29,9 +29,15 @@ impl Token {
         }
     }
 
-    // TODO: expressionではなくkindを用いた実装に帰る.
     fn to_string(&self) -> String {
-        self.expression.iter().collect::<String>()
+        match self.kind.clone() {
+            TokenKind::Delimiter(del_kind) => format!("{}", del_kind.to_literal()),
+            TokenKind::Identifier(name) => name,
+            TokenKind::Integer(n) => format!("{}", n),
+            TokenKind::Operator(ope_kind) => format!("{}", ope_kind.to_literal()),
+            TokenKind::Paren(paren_kind) => format!("{}", paren_kind.to_literal()),
+            TokenKind::Reserved(reserved) => format!("{}", reserved.to_literal()),
+        }
     }
 }
 
