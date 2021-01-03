@@ -63,6 +63,10 @@ impl Location {
     pub fn extend_to(&self, right: Location) -> Location {
         Location::new(self.start.clone(), right.end.clone())
     }
+
+    pub fn target_area(&self) -> (usize, usize) {
+        (self.start.line, self.end.line)
+    }
 }
 
 impl std::fmt::Display for Location {

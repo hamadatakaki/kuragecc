@@ -1,5 +1,6 @@
 use kuragecc::ast::visualize_ast;
 use kuragecc::codegen::CodeGenerator;
+use kuragecc::error::visualize_parser_error;
 use kuragecc::lexer::Lexer;
 use kuragecc::parser::Parser;
 
@@ -11,6 +12,17 @@ fn main() {
         "example/main1.tmpc",
         "example/lexer_error.tmpc",
         "example/parser_error0.tmpc",
+        "example/parser_error1.tmpc",
+        "example/parser_error2.tmpc",
+        "example/parser_error3.tmpc",
+        "example/parser_error4.tmpc",
+        "example/parser_error5.tmpc",
+        "example/parser_error6.tmpc",
+        "example/parser_error7.tmpc",
+        "example/parser_error8.tmpc",
+        "example/parser_error9.tmpc",
+        "example/parser_error10.tmpc",
+        "example/parser_error11.tmpc",
     ];
     for path in paths {
         println!("=> {}\n", path);
@@ -25,7 +37,13 @@ fn compile(path: &str) {
 
     let mut lexer = Lexer::new(&code);
     let tokens = match lexer.tokenize() {
-        Ok(tokens) => tokens,
+        Ok(tokens) => {
+            if !tokens.is_empty() {
+                tokens
+            } else {
+                return;
+            }
+        }
         Err(errors) => {
             println!("{:?}\n", errors);
             return;
@@ -42,8 +60,8 @@ fn compile(path: &str) {
     let mut parser = Parser::new(tokens.clone());
     let ast = match parser.parse() {
         Ok(ast) => ast,
-        Err(errors) => {
-            println!("{:?}\n", errors);
+        Err(error) => {
+            visualize_parser_error(error, code.as_str());
             return;
         }
     };

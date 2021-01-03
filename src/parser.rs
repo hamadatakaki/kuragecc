@@ -1,5 +1,5 @@
 use super::ast::{ASTKind, AST};
-use super::error::{ParserError, ParserErrorKind};
+use super::error::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
 use super::Inspector;
@@ -7,134 +7,174 @@ use super::Inspector;
 pub struct Parser {
     tokens: Vec<Token>,
     look: usize,
-    errors: Vec<ParserError>,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self {
-            tokens,
-            look: 0,
-            errors: Vec::new(),
-        }
+        Self { tokens, look: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<AST, Vec<ParserError>> {
-        let ast = self.parse_block();
-        if self.errors.is_empty() {
-            Ok(ast)
-        } else {
-            Err(self.errors.clone())
-        }
-    }
-
-    fn parse_block(&mut self) -> AST {
-        // block  -> stmt* return
-        let mut token = self.look_at().unwrap();
-        let start = token.location;
-        let mut lines = vec![];
-
-        loop {
-            match token.kind {
-                TokenKind::Reserved(reserved) if reserved.is_literal(String::from("return")) => {
-                    let ast = self.parse_return();
-                    lines.push(ast);
-                    break;
-                }
-                _ => {
-                    let ast = self.parse_stmt();
-                    lines.push(ast);
-                }
+    pub fn look_or_error(&self) -> ParserResult<Token> {
+        match self.look_at() {
+            Some(token) => Ok(token),
+            None => {
+                let kind = ParserErrorKind::StatementEndsInTheMiddle;
+                let loc = self.look_prev().unwrap().location;
+                let error = ParserError::new(kind, loc);
+                Err(error)
             }
-            token = self.look_at().unwrap();
         }
+    }
+
+    pub fn look_and_forward_or_error(&mut self) -> ParserResult<Token> {
+        let token = self.look_or_error()?;
+        self.forward();
+        Ok(token)
+    }
+
+    pub fn parse(&mut self) -> ParserResult<AST> {
+        self.parse_block()
+    }
+
+    fn parse_block(&mut self) -> ParserResult<AST> {
+        // block  -> stmt* return
 
         if !self.at_end() {
-            let start = self.look_at().unwrap().location;
-            let end = self.look_tail().unwrap().location;
-            let loc = start.extend_to(end);
-            let kind = ParserErrorKind::BlockDoesNotEndAtFirstReturn;
-            let error = ParserError::new(kind, loc);
-            self.errors.push(error);
+            let mut token = self.look_at().unwrap();
+            let start = token.location;
+            let mut lines = vec![];
+            while !self.at_end() {
+                match token.kind {
+                    TokenKind::Reserved(reserved)
+                        if reserved.is_literal(String::from("return")) =>
+                    {
+                        let ast = self.parse_return()?;
+                        lines.push(ast);
+                    }
+                    _ => {
+                        let ast = self.parse_stmt()?;
+                        lines.push(ast);
+                    }
+                }
+                if self.at_end() {
+                    break;
+                } else {
+                    token = self.look_at().unwrap();
+                }
+            }
+            let kind = ASTKind::Block(lines);
+            let loc = start.extend_to(token.location);
+            Ok(AST::new(kind, loc))
+        } else {
+            let kind = ParserErrorKind::StatementEndsInTheMiddle;
+            let error = ParserError::new(kind, self.look_prev().unwrap().location);
+            Err(error)
         }
-
-        let end = token.location;
-        let loc = start.extend_to(end);
-
-        let kind = ASTKind::Block(lines);
-        AST::new(kind, loc)
     }
 
-    fn parse_return(&mut self) -> AST {
+    fn parse_return(&mut self) -> ParserResult<AST> {
         // return -> `return` (identifier | expr) `;`
+
         let ret = self.look_and_forward().unwrap();
-        let token = self.look_at().unwrap();
+
+        // identifier か expr の parse
+        let token = self.look_or_error()?;
         let expr = match token.kind {
             TokenKind::Identifier(name) => {
                 let kind = ASTKind::Identifier(name);
                 self.forward();
                 AST::new(kind, token.location)
             }
-            _ => self.parse_expr(),
+            _ => self.parse_expr()?,
         };
-        let semicolon = self.look_and_forward().unwrap();
-        let loc = ret.location.extend_to(semicolon.location);
-        let kind = ASTKind::Return(Box::new(expr));
-        AST::new(kind, loc)
+
+        // semicolon の parse
+        let semicolon = self.look_and_forward_or_error()?;
+        match semicolon.kind {
+            TokenKind::Delimiter(del) if del.is_literal(';') => {
+                let kind = ASTKind::Return(Box::new(expr));
+                let loc = ret.location.extend_to(semicolon.location);
+                Ok(AST::new(kind, loc))
+            }
+            _ => {
+                let kind = ParserErrorKind::NotEndWithSemicolon;
+                let error = ParserError::new(kind, semicolon.location);
+                return Err(error);
+            }
+        }
     }
 
-    fn parse_stmt(&mut self) -> AST {
-        // stmt   -> assigin
+    fn parse_stmt(&mut self) -> ParserResult<AST> {
+        // stmt -> assigin
+
+        // assign の parse
         self.parse_assign()
     }
 
-    fn parse_assign(&mut self) -> AST {
+    fn parse_assign(&mut self) -> ParserResult<AST> {
         // assign -> identifier `=` expr `;`
+
+        // identifier の parse
         let id = self.look_and_forward().unwrap();
-        let start = id.location;
         let name = match id.kind {
             TokenKind::Identifier(name) => name,
-            _ => unimplemented!(),
+            _ => {
+                let kind = ParserErrorKind::AssignStartsWithIdentifier;
+                let error = ParserError::new(kind, id.location);
+                return Err(error);
+            }
         };
-        let equal = self.look_and_forward().unwrap();
+
+        // '=' の parse
+        let equal = self.look_and_forward_or_error()?;
         match equal.kind {
             TokenKind::Operator(ope) if ope.is_literal(String::from("=")) => {}
-            _ => unimplemented!(),
+            _ => {
+                let kind = ParserErrorKind::AssignHasEqualOnSecondToken(name);
+                let error = ParserError::new(kind, equal.location);
+                return Err(error);
+            }
         }
-        let expr = self.parse_expr();
-        let semicolon = self.look_and_forward().unwrap();
-        let end = semicolon.location;
+
+        let expr = self.parse_expr()?;
+
+        // semicolon の parse
+        let semicolon = self.look_and_forward_or_error()?;
         match semicolon.kind {
             TokenKind::Delimiter(delimiter) if delimiter.is_literal(';') => {}
-            _ => unimplemented!(),
+            _ => {
+                let kind = ParserErrorKind::NotEndWithSemicolon;
+                let error = ParserError::new(kind, semicolon.location);
+                return Err(error);
+            }
         }
 
         let kind = ASTKind::Assign(name, Box::new(expr));
-        let loc = start.extend_to(end);
-        AST::new(kind, loc)
+        let loc = id.location.extend_to(semicolon.location);
+        Ok(AST::new(kind, loc))
     }
 
-    fn parse_expr(&mut self) -> AST {
-        // expr   -> term expr'
-        let term_left = self.parse_term();
-        match self.parse_expr_prime() {
+    fn parse_expr(&mut self) -> ParserResult<AST> {
+        // expr -> term expr'
+        let term_left = self.parse_term()?;
+        match self.parse_expr_prime()? {
             Some((ope, term_right)) => {
                 let loc = term_left.location.extend_to(term_right.location);
                 let kind = ASTKind::Binary(Box::new(term_left), Box::new(term_right), ope);
-                AST::new(kind, loc)
+                Ok(AST::new(kind, loc))
             }
-            None => term_left,
+            None => Ok(term_left),
         }
     }
 
-    fn parse_expr_prime(&mut self) -> Option<(OperatorKind, AST)> {
+    fn parse_expr_prime(&mut self) -> ParserResult<Option<(OperatorKind, AST)>> {
         // expr'  -> (`+`|`-`) term expr' | epsilon
-        let looked = self.look_at().unwrap();
-        match looked.kind {
-            TokenKind::Operator(ope_kind) => {
+        let token = self.look_or_error()?;
+        match token.kind {
+            TokenKind::Operator(ope_kind) if ope_kind.priority().is_addition() => {
                 self.forward();
-                let term_left = self.parse_term();
-                let ast = match self.parse_expr_prime() {
+                let term_left = self.parse_term()?;
+                let ast = match self.parse_expr_prime()? {
                     Some((ope, term_right)) => {
                         let loc = term_left.location.extend_to(term_right.location);
                         let kind = ASTKind::Binary(Box::new(term_left), Box::new(term_right), ope);
@@ -142,97 +182,113 @@ impl Parser {
                     }
                     None => term_left,
                 };
-                Some((ope_kind, ast))
+                Ok(Some((ope_kind, ast)))
             }
-            _ => None,
+            _ => Ok(None),
         }
     }
 
-    fn parse_term(&mut self) -> AST {
+    fn parse_term(&mut self) -> ParserResult<AST> {
         // term   -> unary term'
-        let unary_left = self.parse_unary();
-        match self.parse_term_prime() {
+        let unary_left = self.parse_unary()?;
+        match self.parse_term_prime()? {
             Some((ope, unary_right)) => {
                 let loc = unary_left.location.extend_to(unary_right.location);
                 let kind = ASTKind::Binary(Box::new(unary_left), Box::new(unary_right), ope);
-                AST::new(kind, loc)
+                Ok(AST::new(kind, loc))
             }
-            None => unary_left,
+            None => Ok(unary_left),
         }
     }
 
-    fn parse_term_prime(&mut self) -> Option<(OperatorKind, AST)> {
+    fn parse_term_prime(&mut self) -> ParserResult<Option<(OperatorKind, AST)>> {
         // term'  -> (`*`|`/`) unary term' | epsilon
-        let looked = self.look_at().unwrap();
-        match looked.kind {
+        let token = self.look_or_error()?;
+        match token.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_multiplication() => {
                 self.forward();
-                let unary_left = self.parse_unary();
-                let ast = match self.parse_term_prime() {
+                let unary_left = self.parse_unary()?;
+                let ast = match self.parse_term_prime()? {
                     Some((ope, unary_right)) => {
-                        let loc = unary_left.location.extend_to(unary_right.clone().location);
-                        let kind = ASTKind::Binary(
-                            Box::new(unary_left.clone()),
-                            Box::new(unary_right.clone()),
-                            ope,
-                        );
+                        let loc = unary_left.location.extend_to(unary_right.location);
+                        let kind =
+                            ASTKind::Binary(Box::new(unary_left), Box::new(unary_right), ope);
                         AST::new(kind, loc)
                     }
                     None => unary_left,
                 };
-                Some((ope_kind, ast))
+                Ok(Some((ope_kind, ast)))
             }
-            _ => None,
+            _ => Ok(None),
         }
     }
 
-    fn parse_unary(&mut self) -> AST {
+    fn parse_unary(&mut self) -> ParserResult<AST> {
         // unary  -> (`+`|`-`) factor | factor
-        let looked = self.look_at().unwrap();
-        let ope = match looked.kind {
+        let token = self.look_or_error()?;
+        let ope = match token.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_addition() => {
                 self.forward();
                 Some(ope_kind)
             }
             _ => None,
         };
-        let factor = self.parse_factor();
+        let factor = self.parse_factor()?;
         match ope {
             Some(OperatorKind::Minus) => {
-                let loc = looked.location.extend_to(factor.clone().location);
+                let loc = token.location.extend_to(factor.location);
                 let kind = ASTKind::Unary(Box::new(factor), OperatorKind::Minus);
-                AST::new(kind, loc)
+                Ok(AST::new(kind, loc))
             }
-            _ => factor,
+            _ => Ok(factor),
         }
     }
 
-    fn parse_factor(&mut self) -> AST {
+    fn parse_factor(&mut self) -> ParserResult<AST> {
         // factor -> `(` expr `)` | number
-        let looked = self.look_at().unwrap();
-        match looked.kind {
+        let token = self.look_or_error()?;
+        match token.kind {
             TokenKind::Paren(paren_kind) if paren_kind.is_literal('(') => {
-                self.forward();
-                let expr = self.parse_expr();
-                let close_token = self.look_and_forward().unwrap();
-                match close_token.kind {
-                    TokenKind::Paren(paren_kind) if paren_kind.is_literal(')') => expr,
-                    _ => unimplemented!(),
-                }
+                self._parse_expr_enclosed_paren()
             }
             TokenKind::Integer(_) => self.parse_number(),
-            _ => unimplemented!(),
+            _ => {
+                let kind = ParserErrorKind::ExpectedToken(
+                    token.to_string(),
+                    String::from("<number> / <paren-expr>"),
+                );
+                let error = ParserError::new(kind, token.location);
+                Err(error)
+            }
         }
     }
 
-    fn parse_number(&mut self) -> AST {
+    fn _parse_expr_enclosed_paren(&mut self) -> ParserResult<AST> {
+        self.forward();
+        let expr = self.parse_expr()?;
+
+        let close_token = self.look_and_forward_or_error()?;
+        match close_token.kind {
+            TokenKind::Paren(paren_kind) if paren_kind.is_literal(')') => Ok(expr),
+            _ => {
+                let kind =
+                    ParserErrorKind::ExpectedToken(close_token.to_string(), String::from(")"));
+                let error = ParserError::new(kind, close_token.location);
+                Err(error)
+            }
+        }
+    }
+
+    fn parse_number(&mut self) -> ParserResult<AST> {
         // number -> integer
-        let looked = self.look_and_forward().unwrap();
-        let kind = match looked.kind {
-            TokenKind::Integer(n) => ASTKind::Integer(n),
+        let token = self.look_and_forward_or_error().unwrap();
+        match token.kind {
+            TokenKind::Integer(n) => {
+                let kind = ASTKind::Integer(n);
+                Ok(AST::new(kind, token.location))
+            }
             _ => unreachable!(),
-        };
-        AST::new(kind, looked.location)
+        }
     }
 }
 
