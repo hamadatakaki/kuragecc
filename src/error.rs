@@ -68,7 +68,7 @@ impl ParserError {
     }
 }
 
-pub type ParserResult<Ok> = Result<Ok, ParserError>;
+pub type ParserResult<T> = Result<T, ParserError>;
 
 pub fn visualize_parser_error(error: ParserError, source: &str) {
     println!("Parser Error: {}", error.kind.reason());
@@ -77,5 +77,23 @@ pub fn visualize_parser_error(error: ParserError, source: &str) {
     let showing_lines = lines.as_slice()[from..to + 1].to_vec();
     for (index, line) in showing_lines.iter().enumerate() {
         println!("{}: {}", index + from + 1, line);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SemanticErrorKind {
+    BlockDoesNotEndAtFirstReturn,
+    VariableIsNotDeclared(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct SemanticError {
+    kind: SemanticErrorKind,
+    loc: Location,
+}
+
+impl SemanticError {
+    pub fn new(kind: SemanticErrorKind, loc: Location) -> Self {
+        Self { kind, loc }
     }
 }
