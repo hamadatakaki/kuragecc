@@ -1,8 +1,10 @@
 pub mod ast;
 pub mod codegen;
 pub mod error;
+pub mod identifier;
 pub mod lexer;
 pub mod parser;
+pub mod semantics;
 pub mod token;
 
 trait Inspector {

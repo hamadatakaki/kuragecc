@@ -1,6 +1,6 @@
 use super::ast::{ASTKind, AST};
+use super::identifier::IdentifierManager;
 use super::token::literal::OperatorKind;
-use std::collections::HashMap;
 
 /*
     define i32 @main() {
@@ -11,40 +11,10 @@ use std::collections::HashMap;
     }
 */
 
-pub struct VariableManager {
-    count: usize,
-    book: HashMap<String, String>,
-}
-
-impl VariableManager {
-    fn new() -> Self {
-        Self {
-            count: 1,
-            book: HashMap::new(),
-        }
-    }
-
-    fn new_id(&mut self, name: &str) -> String {
-        let c = self.count;
-        self.count += 1;
-        format!("%val_{}_{}", c, name)
-    }
-
-    fn get_name(&self, name: String) -> Option<&String> {
-        self.book.get(&name)
-    }
-
-    fn set_name(&mut self, name: String) -> String {
-        let id = self.new_id(name.as_str());
-        self.book.insert(name, id.clone());
-        id
-    }
-}
-
 pub struct CodeGenerator {
     ast: AST,
     lines: Vec<String>,
-    manager: VariableManager,
+    manager: IdentifierManager,
 }
 
 impl CodeGenerator {
@@ -52,7 +22,7 @@ impl CodeGenerator {
         Self {
             ast,
             lines: vec![],
-            manager: VariableManager::new(),
+            manager: IdentifierManager::new(),
         }
     }
 
@@ -116,7 +86,7 @@ impl CodeGenerator {
     }
 
     fn gen_identifier(&mut self, name: String) -> String {
-        match self.manager.get_name(name) {
+        match self.manager.get_name(&name) {
             Some(id) => format!("{}", id),
             None => unimplemented!(),
         }
