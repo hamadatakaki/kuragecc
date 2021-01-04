@@ -3,6 +3,7 @@ use kuragecc::codegen::CodeGenerator;
 use kuragecc::error::visualize_parser_error;
 use kuragecc::lexer::Lexer;
 use kuragecc::parser::Parser;
+use kuragecc::semantics::SemanticAnalyzer;
 
 use std::fs;
 
@@ -23,6 +24,7 @@ fn main() {
         "example/parser_error9.tmpc",
         "example/parser_error10.tmpc",
         "example/parser_error11.tmpc",
+        "example/semantics_error0.tmpc",
     ];
     for path in paths {
         println!("=> {}\n", path);
@@ -35,6 +37,7 @@ fn compile(path: &str) {
 
     println!("```\n{}```\n", code);
 
+    // Lexer
     let mut lexer = Lexer::new(&code);
     let tokens = match lexer.tokenize() {
         Ok(tokens) => {
@@ -57,6 +60,7 @@ fn compile(path: &str) {
         println!();
     }
 
+    // Parser
     let mut parser = Parser::new(tokens.clone());
     let ast = match parser.parse() {
         Ok(ast) => ast,
@@ -71,6 +75,17 @@ fn compile(path: &str) {
         println!();
     }
 
+    // Semantic Analyzer
+    let mut analyzer = SemanticAnalyzer::new();
+    match analyzer.semantic_analyze(ast.clone()) {
+        Err(errors) => {
+            println!("{:?}\n", errors);
+            return;
+        }
+        _ => {}
+    }
+
+    // Code Generator
     let mut generator = CodeGenerator::new(ast);
     generator.gen_code();
     println!("{}", generator.code());
