@@ -28,6 +28,7 @@ fn main() {
         "example/parser_error11.tmpc",
         "example/semantics_error0.tmpc",
         "example/semantics_error1.tmpc",
+        "example/semantics_error2.tmpc",
     ];
     for path in paths {
         println!("=> {}\n", path);
