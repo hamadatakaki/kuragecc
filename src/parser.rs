@@ -148,70 +148,45 @@ impl Parser {
 
     fn parse_expr(&mut self) -> ParserResult<AST> {
         // expr -> term expr'
-        let term_left = self.parse_term()?;
-        match self.parse_expr_prime()? {
-            Some((ope, term_right)) => {
-                let loc = term_left.location.extend_to(term_right.location);
-                let kind = ASTKind::Binary(Box::new(term_left), Box::new(term_right), ope);
-                Ok(AST::new(kind, loc))
-            }
-            None => Ok(term_left),
-        }
+        let term = self.parse_term()?;
+        self.parse_expr_prime(term)
     }
 
-    fn parse_expr_prime(&mut self) -> ParserResult<Option<(OperatorKind, AST)>> {
+    fn parse_expr_prime(&mut self, expr_left: AST) -> ParserResult<AST> {
         // expr'  -> (`+`|`-`) term expr' | epsilon
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_addition() => {
                 self.forward();
-                let term_left = self.parse_term()?;
-                let ast = match self.parse_expr_prime()? {
-                    Some((ope, term_right)) => {
-                        let loc = term_left.location.extend_to(term_right.location);
-                        let kind = ASTKind::Binary(Box::new(term_left), Box::new(term_right), ope);
-                        AST::new(kind, loc)
-                    }
-                    None => term_left,
-                };
-                Ok(Some((ope_kind, ast)))
+                let term = self.parse_term()?;
+                let loc = expr_left.location.extend_to(term.location);
+                let kind = ASTKind::Binary(Box::new(expr_left), Box::new(term), ope_kind);
+                let expr = AST::new(kind, loc);
+                self.parse_expr_prime(expr)
             }
-            _ => Ok(None),
+            _ => Ok(expr_left),
         }
     }
 
     fn parse_term(&mut self) -> ParserResult<AST> {
         // term   -> unary term'
-        let unary_left = self.parse_unary()?;
-        match self.parse_term_prime()? {
-            Some((ope, unary_right)) => {
-                let loc = unary_left.location.extend_to(unary_right.location);
-                let kind = ASTKind::Binary(Box::new(unary_left), Box::new(unary_right), ope);
-                Ok(AST::new(kind, loc))
-            }
-            None => Ok(unary_left),
-        }
+        let unary = self.parse_unary()?;
+        self.parse_term_prime(unary)
     }
 
-    fn parse_term_prime(&mut self) -> ParserResult<Option<(OperatorKind, AST)>> {
+    fn parse_term_prime(&mut self, term_left: AST) -> ParserResult<AST> {
         // term'  -> (`*`|`/`) unary term' | epsilon
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_multiplication() => {
                 self.forward();
-                let unary_left = self.parse_unary()?;
-                let ast = match self.parse_term_prime()? {
-                    Some((ope, unary_right)) => {
-                        let loc = unary_left.location.extend_to(unary_right.location);
-                        let kind =
-                            ASTKind::Binary(Box::new(unary_left), Box::new(unary_right), ope);
-                        AST::new(kind, loc)
-                    }
-                    None => unary_left,
-                };
-                Ok(Some((ope_kind, ast)))
+                let unary = self.parse_unary()?;
+                let loc = term_left.location.extend_to(unary.location);
+                let kind = ASTKind::Binary(Box::new(term_left), Box::new(unary), ope_kind);
+                let term = AST::new(kind, loc);
+                self.parse_term_prime(term)
             }
-            _ => Ok(None),
+            _ => Ok(term_left),
         }
     }
 
@@ -244,14 +219,6 @@ impl Parser {
                 self._parse_expr_enclosed_paren()
             }
             _ => self.parse_value(),
-            // _ => {
-            //     let kind = ParserErrorKind::ExpectedToken(
-            //         token.to_string(),
-            //         String::from("<number> / <paren-expr>"),
-            //     );
-            //     let error = ParserError::new(kind, token.location);
-            //     Err(error)
-            // }
         }
     }
 
