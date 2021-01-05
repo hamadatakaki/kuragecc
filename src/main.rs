@@ -11,6 +11,8 @@ fn main() {
     let paths = vec![
         "example/main0.tmpc",
         "example/main1.tmpc",
+        "example/main2.tmpc",
+        "example/main3.tmpc",
         "example/lexer_error.tmpc",
         "example/parser_error0.tmpc",
         "example/parser_error1.tmpc",
@@ -78,20 +80,20 @@ fn compile(path: &str) {
         println!();
     }
 
-    // Semantic Analyzer
-    let mut analyzer = SemanticAnalyzer::new();
-    match analyzer.semantic_analyze(ast.clone()) {
-        Err(errors) => {
-            for e in errors {
-                e.visualize_error(code.as_str());
-            }
-            return;
-        }
-        _ => {}
-    }
+    // // Semantic Analyzer
+    // let mut analyzer = SemanticAnalyzer::new();
+    // match analyzer.semantic_analyze(ast.clone()) {
+    //     Err(errors) => {
+    //         for e in errors {
+    //             e.visualize_error(code.as_str());
+    //         }
+    //         return;
+    //     }
+    //     _ => {}
+    // }
 
-    // Code Generator
-    let mut generator = CodeGenerator::new(ast);
-    generator.gen_code();
-    println!("{}", generator.code());
+    // // Code Generator
+    // let mut generator = CodeGenerator::new(ast);
+    // generator.gen_code();
+    // println!("{}", generator.code());
 }

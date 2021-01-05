@@ -73,20 +73,12 @@ impl Parser {
     }
 
     fn parse_return(&mut self) -> ParserResult<AST> {
-        // return -> `return` (identifier | expr) `;`
+        // return -> `return` expr `;`
 
         let ret = self.look_and_forward().unwrap();
 
-        // identifier か expr の parse
-        let token = self.look_or_error()?;
-        let expr = match token.kind {
-            TokenKind::Identifier(name) => {
-                let kind = ASTKind::Identifier(name);
-                self.forward();
-                AST::new(kind, token.location)
-            }
-            _ => self.parse_expr()?,
-        };
+        // expr の parse
+        let expr = self.parse_expr()?;
 
         // semicolon の parse
         let semicolon = self.look_and_forward_or_error()?;
@@ -245,21 +237,21 @@ impl Parser {
     }
 
     fn parse_factor(&mut self) -> ParserResult<AST> {
-        // factor -> `(` expr `)` | number
+        // factor -> `(` expr `)` | value
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Paren(paren_kind) if paren_kind.is_literal('(') => {
                 self._parse_expr_enclosed_paren()
             }
-            TokenKind::Integer(_) => self.parse_number(),
-            _ => {
-                let kind = ParserErrorKind::ExpectedToken(
-                    token.to_string(),
-                    String::from("<number> / <paren-expr>"),
-                );
-                let error = ParserError::new(kind, token.location);
-                Err(error)
-            }
+            _ => self.parse_value(),
+            // _ => {
+            //     let kind = ParserErrorKind::ExpectedToken(
+            //         token.to_string(),
+            //         String::from("<number> / <paren-expr>"),
+            //     );
+            //     let error = ParserError::new(kind, token.location);
+            //     Err(error)
+            // }
         }
     }
 
@@ -279,15 +271,26 @@ impl Parser {
         }
     }
 
-    fn parse_number(&mut self) -> ParserResult<AST> {
-        // number -> integer
+    fn parse_value(&mut self) -> ParserResult<AST> {
+        // value -> integer | identifier
         let token = self.look_and_forward_or_error().unwrap();
         match token.kind {
             TokenKind::Integer(n) => {
                 let kind = ASTKind::Integer(n);
                 Ok(AST::new(kind, token.location))
             }
-            _ => unreachable!(),
+            TokenKind::Identifier(name) => {
+                let kind = ASTKind::Identifier(name);
+                Ok(AST::new(kind, token.location))
+            }
+            _ => {
+                let kind = ParserErrorKind::ExpectedToken(
+                    token.to_string(),
+                    String::from("<number> / <identifier> / <paren-expr>"),
+                );
+                let error = ParserError::new(kind, token.location);
+                Err(error)
+            }
         }
     }
 }

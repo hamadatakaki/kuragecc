@@ -3,7 +3,7 @@ use super::Location;
 
 /*
     block  -> stmt* return
-    return -> `return` (expr | identifier) `;`
+    return -> `return` expr `;`
     stmt   -> assign
     assign -> identifier `=` expr `;`
     expr   -> term expr'
@@ -11,8 +11,8 @@ use super::Location;
     term   -> unary term'
     term'  -> (`*`|`/`) unary term' | epsilon
     unary  -> (`+`|`-`) factor | factor
-    factor -> `(` expr `)` | number
-    number -> integer
+    factor -> `(` expr `)` | value
+    value  -> integer | identifier
 */
 
 #[derive(Debug, Clone)]
