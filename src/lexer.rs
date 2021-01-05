@@ -1,4 +1,4 @@
-use super::error::LexerError;
+use super::error::{LexerError, LexerResult};
 use super::token::literal::{
     DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
 };
@@ -33,7 +33,7 @@ impl Lexer {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<Vec<Token>, Vec<LexerError>> {
+    pub fn tokenize(&mut self) -> LexerResult<Vec<Token>> {
         self.rec_tokenize();
         if self.errors.is_empty() {
             Ok(self.tokens.clone())

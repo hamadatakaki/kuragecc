@@ -1,5 +1,5 @@
 use super::ast::{ASTKind, AST};
-use super::error::{SemanticError, SemanticErrorKind};
+use super::error::{SemanticError, SemanticErrorKind, SemanticResult};
 use super::identifier::IdentifierManager;
 
 pub struct SemanticAnalyzer {
@@ -15,7 +15,7 @@ impl SemanticAnalyzer {
         }
     }
 
-    pub fn semantic_analyze(&mut self, ast: AST) -> Result<(), Vec<SemanticError>> {
+    pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<()> {
         self.semantic_analyze_block(ast);
         if self.errors.is_empty() {
             Ok(())
@@ -35,7 +35,7 @@ impl SemanticAnalyzer {
                                 let start = line.location;
                                 let end = lines.last().unwrap().location;
                                 let loc = start.extend_to(end);
-                                let kind = SemanticErrorKind::BlockDoesNotEndAtFirstReturn;
+                                let kind = SemanticErrorKind::BlockMustEndAtFirstReturn;
                                 let error = SemanticError::new(kind, loc);
                                 self.errors.push(error);
                             }
@@ -60,7 +60,7 @@ impl SemanticAnalyzer {
         match ast.kind {
             ASTKind::Identifier(name) => {
                 if self.id_manager.get_name(&name).is_none() {
-                    let kind = SemanticErrorKind::VariableIsNotDeclared(name);
+                    let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
                     let error = SemanticError::new(kind, ast.location);
                     self.errors.push(error)
                 }

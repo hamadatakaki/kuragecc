@@ -1,6 +1,6 @@
 use kuragecc::ast::visualize_ast;
 use kuragecc::codegen::CodeGenerator;
-use kuragecc::error::visualize_parser_error;
+use kuragecc::error::VisualizeError;
 use kuragecc::lexer::Lexer;
 use kuragecc::parser::Parser;
 use kuragecc::semantics::SemanticAnalyzer;
@@ -25,6 +25,7 @@ fn main() {
         "example/parser_error10.tmpc",
         "example/parser_error11.tmpc",
         "example/semantics_error0.tmpc",
+        "example/semantics_error1.tmpc",
     ];
     for path in paths {
         println!("=> {}\n", path);
@@ -48,7 +49,9 @@ fn compile(path: &str) {
             }
         }
         Err(errors) => {
-            println!("{:?}\n", errors);
+            for e in errors {
+                e.visualize_error(code.as_str());
+            }
             return;
         }
     };
@@ -65,7 +68,7 @@ fn compile(path: &str) {
     let ast = match parser.parse() {
         Ok(ast) => ast,
         Err(error) => {
-            visualize_parser_error(error, code.as_str());
+            error.visualize_error(code.as_str());
             return;
         }
     };
@@ -79,7 +82,9 @@ fn compile(path: &str) {
     let mut analyzer = SemanticAnalyzer::new();
     match analyzer.semantic_analyze(ast.clone()) {
         Err(errors) => {
-            println!("{:?}\n", errors);
+            for e in errors {
+                e.visualize_error(code.as_str());
+            }
             return;
         }
         _ => {}
