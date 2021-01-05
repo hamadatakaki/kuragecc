@@ -51,21 +51,8 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_return(&mut self, ast: AST) {
         match ast.kind {
-            ASTKind::Return(expr) => self.semantic_analyze_expr_or_identifier(*expr),
+            ASTKind::Return(expr) => self.semantic_analyze_expr(*expr),
             _ => unreachable!(),
-        }
-    }
-
-    fn semantic_analyze_expr_or_identifier(&mut self, ast: AST) {
-        match ast.kind {
-            ASTKind::Identifier(name) => {
-                if self.id_manager.get_name(&name).is_none() {
-                    let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
-                    let error = SemanticError::new(kind, ast.location);
-                    self.errors.push(error)
-                }
-            }
-            _ => self.semantic_analyze_expr(ast),
         }
     }
 
@@ -93,6 +80,13 @@ impl SemanticAnalyzer {
                 self.semantic_analyze_expr(*factor);
             }
             ASTKind::Integer(_) => {}
+            ASTKind::Identifier(name) => {
+                if self.id_manager.get_name(&name).is_none() {
+                    let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
+                    let error = SemanticError::new(kind, ast.location);
+                    self.errors.push(error)
+                }
+            }
             _ => unreachable!(),
         }
     }
