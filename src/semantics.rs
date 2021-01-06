@@ -16,7 +16,7 @@ impl SemanticAnalyzer {
     }
 
     pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<()> {
-        self.semantic_analyze_block(ast);
+        self.semantic_analyze_func(ast);
         if self.errors.is_empty() {
             Ok(())
         } else {
@@ -24,40 +24,30 @@ impl SemanticAnalyzer {
         }
     }
 
+    fn semantic_analyze_func(&mut self, ast: AST) {
+        match ast.kind {
+            ASTKind::Func(_, block) => self.semantic_analyze_block(*block),
+            _ => unreachable!(),
+        }
+    }
+
     fn semantic_analyze_block(&mut self, ast: AST) {
         match ast.kind {
             ASTKind::Block(lines) => {
-                for (i, line) in lines.iter().enumerate() {
-                    match line.kind {
-                        ASTKind::Return(_) => {
-                            self.semantic_analyze_return(line.clone());
-                            if i < lines.len() - 1 {
-                                let start = line.location;
-                                let end = lines.last().unwrap().location;
-                                let loc = start.extend_to(end);
-                                let kind = SemanticErrorKind::BlockMustEndAtFirstReturn;
-                                let error = SemanticError::new(kind, loc);
-                                self.errors.push(error);
-                            }
-                            break;
-                        }
-                        _ => self.semantic_analyze_stmt(line.clone()),
-                    }
+                for line in lines {
+                    self.semantic_analyze_stmt(line);
                 }
             }
             _ => unreachable!(),
         }
     }
 
-    fn semantic_analyze_return(&mut self, ast: AST) {
-        match ast.kind {
-            ASTKind::Return(expr) => self.semantic_analyze_expr(*expr),
+    fn semantic_analyze_stmt(&mut self, ast: AST) {
+        match ast.clone().kind {
+            ASTKind::Assign(_, __) => self.semantic_analyze_assign(ast),
+            ASTKind::Return(_) => self.semantic_analyze_return(ast),
             _ => unreachable!(),
         }
-    }
-
-    fn semantic_analyze_stmt(&mut self, ast: AST) {
-        self.semantic_analyze_assign(ast);
     }
 
     fn semantic_analyze_assign(&mut self, ast: AST) {
@@ -66,6 +56,13 @@ impl SemanticAnalyzer {
                 self.id_manager.set_name(name);
                 self.semantic_analyze_expr(*expr)
             }
+            _ => unreachable!(),
+        }
+    }
+
+    fn semantic_analyze_return(&mut self, ast: AST) {
+        match ast.kind {
+            ASTKind::Return(expr) => self.semantic_analyze_expr(*expr),
             _ => unreachable!(),
         }
     }

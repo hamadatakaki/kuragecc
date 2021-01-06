@@ -60,17 +60,17 @@ fn compile(path: &str) {
         println!();
     }
 
-    // // Semantic Analyzer
-    // let mut analyzer = SemanticAnalyzer::new();
-    // match analyzer.semantic_analyze(ast.clone()) {
-    //     Err(errors) => {
-    //         for e in errors {
-    //             e.visualize_error(code.as_str());
-    //         }
-    //         return;
-    //     }
-    //     _ => {}
-    // }
+    // Semantic Analyzer
+    let mut analyzer = SemanticAnalyzer::new();
+    match analyzer.semantic_analyze(ast.clone()) {
+        Err(errors) => {
+            for e in errors {
+                e.visualize_error(code.as_str());
+            }
+            return;
+        }
+        _ => {}
+    }
 
     // // // Code Generator
     // let mut generator = CodeGenerator::new(ast);
