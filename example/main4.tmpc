@@ -1,0 +1,6 @@
+main() {
+    x = 4;
+    y = 6;
+    z = 3;
+    return (x + z) * y ;
+}
