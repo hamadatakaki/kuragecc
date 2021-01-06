@@ -92,6 +92,10 @@ impl TerminalSymbol for ParenKind {
         match literal {
             '(' => ParenKind::NormalOpen,
             ')' => ParenKind::NormalClose,
+            '[' => ParenKind::SquareOpen,
+            ']' => ParenKind::SquareClose,
+            '{' => ParenKind::CurlyOpen,
+            '}' => ParenKind::CurlyClose,
             _ => unreachable!(),
         }
     }

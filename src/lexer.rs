@@ -97,7 +97,7 @@ impl Lexer {
         let loc = Location::new(start, end);
         let n = nums.iter().collect::<String>().parse::<u32>().unwrap();
         let kind = TokenKind::Integer(n);
-        let token = Token::new(kind, loc, nums);
+        let token = Token::new(kind, loc);
         self.tokens.push(token);
     }
 
@@ -121,7 +121,7 @@ impl Lexer {
         } else {
             TokenKind::Identifier(s)
         };
-        let token = Token::new(kind, loc, words);
+        let token = Token::new(kind, loc);
         self.tokens.push(token);
     }
 
@@ -131,8 +131,7 @@ impl Lexer {
         let end = self.position;
         let loc = Location::new(start, end);
         let kind = TokenKind::Delimiter(DelimiterKind::from_literal(looked));
-        let words = vec![looked];
-        let token = Token::new(kind, loc, words);
+        let token = Token::new(kind, loc);
         self.tokens.push(token);
     }
 
@@ -142,8 +141,7 @@ impl Lexer {
         let end = self.position;
         let loc = Location::new(start, end);
         let kind = TokenKind::Paren(ParenKind::from_literal(looked));
-        let words = vec![looked];
-        let token = Token::new(kind, loc, words);
+        let token = Token::new(kind, loc);
         self.tokens.push(token);
     }
 
@@ -167,7 +165,7 @@ impl Lexer {
         let loc = Location::new(start, end);
         let s = words.iter().collect::<String>();
         let kind = TokenKind::Operator(OperatorKind::from_literal(s));
-        let token = Token::new(kind, loc, words);
+        let token = Token::new(kind, loc);
         self.tokens.push(token);
     }
 }

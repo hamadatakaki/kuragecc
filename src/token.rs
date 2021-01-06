@@ -17,16 +17,11 @@ pub enum TokenKind {
 pub struct Token {
     pub kind: TokenKind,
     pub location: Location,
-    expression: Vec<char>,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, location: Location, expression: Vec<char>) -> Self {
-        Self {
-            kind,
-            location,
-            expression,
-        }
+    pub fn new(kind: TokenKind, location: Location) -> Self {
+        Self { kind, location }
     }
 
     fn to_string(&self) -> String {
