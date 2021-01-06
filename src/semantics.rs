@@ -1,6 +1,6 @@
 use super::ast::{ASTKind, AST};
 use super::error::{SemanticError, SemanticErrorKind, SemanticResult};
-use super::identifier::IdentifierManager;
+use super::identifier::{IdentifierInformation, IdentifierKind, IdentifierManager};
 
 pub struct SemanticAnalyzer {
     id_manager: IdentifierManager,
@@ -53,7 +53,8 @@ impl SemanticAnalyzer {
     fn semantic_analyze_assign(&mut self, ast: AST) {
         match ast.kind {
             ASTKind::Assign(name, expr) => {
-                self.id_manager.set_name(name);
+                let info = IdentifierInformation::new(IdentifierKind::Variable, ast.scope);
+                self.id_manager.set_name(name, info);
                 self.semantic_analyze_expr(*expr)
             }
             _ => unreachable!(),

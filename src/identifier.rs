@@ -1,8 +1,27 @@
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
+pub enum IdentifierKind {
+    Function,
+    Variable,
+}
+
+#[derive(Debug, Clone)]
+pub struct IdentifierInformation {
+    kind: IdentifierKind,
+    scope: i32,
+}
+
+impl IdentifierInformation {
+    pub fn new(kind: IdentifierKind, scope: i32) -> Self {
+        Self { kind, scope }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct IdentifierManager {
     count: usize,
-    book: HashMap<String, String>,
+    book: HashMap<String, IdentifierInformation>,
 }
 
 impl IdentifierManager {
@@ -13,19 +32,11 @@ impl IdentifierManager {
         }
     }
 
-    fn new_id(&mut self, name: &str) -> String {
-        let c = self.count;
-        self.count += 1;
-        format!("%val_{}_{}", c, name)
-    }
-
-    pub fn get_name(&self, name: &String) -> Option<&String> {
+    pub fn get_name(&self, name: &String) -> Option<&IdentifierInformation> {
         self.book.get(name)
     }
 
-    pub fn set_name(&mut self, name: String) -> String {
-        let id = self.new_id(name.as_str());
-        self.book.insert(name, id.clone());
-        id
+    pub fn set_name(&mut self, name: String, info: IdentifierInformation) {
+        self.book.insert(name, info.clone());
     }
 }
