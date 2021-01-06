@@ -84,7 +84,7 @@ pub enum ParserErrorKind {
     AssignStartsWithIdentifier,
     AssignHasEqualOnSecondToken(String),
     StatementEndsInTheMiddle,
-    ExpectedToken(String, String),
+    ExpectedToken(String, String), // actual, expected
 }
 
 impl HasReason for ParserErrorKind {
@@ -119,6 +119,11 @@ pub struct ParserError {
 impl ParserError {
     pub fn new(kind: ParserErrorKind, loc: Location) -> Self {
         Self { kind, loc }
+    }
+
+    pub fn expected_token(actual: String, expected: String, loc: Location) -> Self {
+        let kind = ParserErrorKind::ExpectedToken(actual, expected);
+        ParserError::new(kind, loc)
     }
 }
 
