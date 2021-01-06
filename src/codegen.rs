@@ -4,7 +4,7 @@ pub mod symbol;
 use super::ast::{ASTKind, AST};
 use super::token::literal::OperatorKind;
 use code::{Code, Expression};
-use symbol::SymbolTable;
+use symbol::{Symbol, SymbolTable};
 
 pub struct CodeGenerator {
     ast: AST,
@@ -28,12 +28,24 @@ impl CodeGenerator {
             .collect::<String>()
     }
 
-    pub fn gen_code(&mut self) {
-        self.gen_block(self.ast.clone());
+    pub fn gen_code(&mut self) -> String {
+        self.gen_func(self.ast.clone());
+        self.code()
+    }
+
+    fn gen_func(&mut self, ast: AST) {
+        match ast.kind {
+            ASTKind::Func(identifier, block) => {
+                let expr = Expression::Symbol(Symbol(format!("{}", identifier)));
+                self.codes.push(Code::DefineOpen(expr));
+                self.gen_block(*block);
+                self.codes.push(Code::DefineClose);
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn gen_block(&mut self, ast: AST) {
-        self.codes.push(Code::DefineOpen);
         let stmts = match ast.kind {
             ASTKind::Block(stmts) => stmts,
             _ => unreachable!(),
@@ -41,16 +53,11 @@ impl CodeGenerator {
         for stmt in stmts {
             match stmt.clone().kind {
                 ASTKind::Assign(_, _) => self.gen_assign(stmt),
-                ASTKind::Return(_) => {
-                    self.gen_return(stmt);
-                }
+                ASTKind::Return(_) => self.gen_return(stmt),
                 _ => unreachable!(),
             }
         }
-        self.codes.push(Code::DefineClose);
     }
-
-    // fn gen_stmt(&mut self, ast: AST) {}
 
     fn gen_return(&mut self, ast: AST) {
         let ret = match ast.kind {

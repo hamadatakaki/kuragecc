@@ -72,8 +72,8 @@ fn compile(path: &str) {
         _ => {}
     }
 
-    // // // Code Generator
-    // let mut generator = CodeGenerator::new(ast);
-    // generator.gen_code();
-    // println!("{}", generator.code());
+    // Code Generator
+    let mut generator = CodeGenerator::new(ast);
+    let code = generator.gen_code();
+    println!("{}", code);
 }

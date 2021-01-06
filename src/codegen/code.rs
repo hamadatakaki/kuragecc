@@ -22,9 +22,46 @@ impl Expression {
     }
 }
 
+/*
+main() {
+    x = 40;
+    y = 50;
+    z = 60;
+    return (x + z) * y ;
+}
+
+define i32 @main() #0 {
+    %1 = alloca i32, align 4
+    store i32 0, i32* %1, align 4
+
+    // x
+    %2 = alloca i32, align 4
+    store i32 40, i32* %2, align 4
+    %5 = load i32, i32* %2, align 4
+
+    // y
+    %4 = alloca i32, align 4
+    store i32 60, i32* %4, align 4
+    %6 = load i32, i32* %4, align 4
+
+    // z
+    %3 = alloca i32, align 4
+    store i32 50, i32* %3, align 4
+    %8 = load i32, i32* %3, align 4
+
+    // x + z -> %7
+    %7 = add nsw i32 %5, %6
+
+    // %7 * y -> %9
+    %9 = mul nsw i32 %7, %8
+
+    ret i32 %9
+}
+*/
+
 #[derive(Debug, Clone)]
 pub enum Code {
-    DefineOpen,
+    DefineOpen(Expression),
     DefineClose,
     Alloca(Expression),
     Store(Expression, i32),
@@ -40,7 +77,9 @@ pub enum Code {
 impl Code {
     pub fn to_string(&self) -> String {
         match self {
-            Code::DefineOpen => format!("define i32 @main() {{\n"),
+            Code::DefineOpen(define_name) => {
+                format!("define i32 @{}() {{\n", define_name.to_string())
+            }
             Code::DefineClose => format!("}}\n"),
             Code::Alloca(expr) => match expr.to_symbol() {
                 Some(sym) => {

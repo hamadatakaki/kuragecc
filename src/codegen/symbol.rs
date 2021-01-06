@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct Symbol(String);
+pub struct Symbol(pub String);
 
 impl Symbol {
     pub fn reveal(&self) -> String {
