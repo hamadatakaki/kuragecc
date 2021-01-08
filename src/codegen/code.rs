@@ -4,6 +4,7 @@ use super::symbol::Symbol;
 pub enum Expression {
     Value(i32),
     Symbol(Symbol),
+    // Call(String),
 }
 
 impl Expression {
@@ -18,46 +19,10 @@ impl Expression {
         match self {
             Expression::Value(n) => format!("{}", n),
             Expression::Symbol(sym) => sym.reveal(),
+            // Expression::Call(name) => name.clone(),
         }
     }
 }
-
-/*
-main() {
-    x = 40;
-    y = 50;
-    z = 60;
-    return (x + z) * y ;
-}
-
-define i32 @main() #0 {
-    %1 = alloca i32, align 4
-    store i32 0, i32* %1, align 4
-
-    // x
-    %2 = alloca i32, align 4
-    store i32 40, i32* %2, align 4
-    %5 = load i32, i32* %2, align 4
-
-    // y
-    %4 = alloca i32, align 4
-    store i32 60, i32* %4, align 4
-    %6 = load i32, i32* %4, align 4
-
-    // z
-    %3 = alloca i32, align 4
-    store i32 50, i32* %3, align 4
-    %8 = load i32, i32* %3, align 4
-
-    // x + z -> %7
-    %7 = add nsw i32 %5, %6
-
-    // %7 * y -> %9
-    %9 = mul nsw i32 %7, %8
-
-    ret i32 %9
-}
-*/
 
 #[derive(Debug, Clone)]
 pub enum Code {
@@ -72,6 +37,8 @@ pub enum Code {
     Sub(Expression, Expression, Expression),
     Multi(Expression, Expression, Expression),
     Divide(Expression, Expression, Expression),
+    // function calling: (name, assigned)
+    FuncCall(String, Expression),
 }
 
 impl Code {
@@ -134,6 +101,10 @@ impl Code {
                     left.to_string(),
                     right.to_string()
                 )
+            }
+            Code::FuncCall(name, assigned) => {
+                let assigned = assigned.to_symbol().unwrap().reveal();
+                format!("  {} = call i32 @{}()\n", assigned, name)
             }
         }
     }

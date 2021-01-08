@@ -29,8 +29,19 @@ impl CodeGenerator {
     }
 
     pub fn gen_code(&mut self) -> String {
-        self.gen_func(self.ast.clone());
+        self.gen_program(self.ast.clone());
         self.code()
+    }
+
+    fn gen_program(&mut self, ast: AST) {
+        match ast.kind {
+            ASTKind::Program(asts) => {
+                for ast in asts {
+                    self.gen_func(ast);
+                }
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn gen_func(&mut self, ast: AST) {
@@ -112,6 +123,13 @@ impl CodeGenerator {
                 Some(sym) => Expression::Symbol(sym.clone()),
                 None => unreachable!(),
             },
+            ASTKind::FuncCall(name) => {
+                let assigned = self.table.anonymous_symbol();
+                let assigned = Expression::Symbol(assigned);
+                let code = Code::FuncCall(name, assigned.clone());
+                self.codes.push(code);
+                assigned
+            }
             ASTKind::Binary(left, right, ope) => {
                 let l = self.gen_expr(*left);
                 let r = self.gen_expr(*right);
