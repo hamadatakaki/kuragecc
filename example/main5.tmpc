@@ -1,0 +1,9 @@
+func1() {
+    c = 42;
+    return c;
+}
+
+main() {
+    x = func1();
+    return x;
+}
