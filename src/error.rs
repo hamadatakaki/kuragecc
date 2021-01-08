@@ -149,6 +149,7 @@ impl VisualizeError for ParserError {}
 pub enum SemanticErrorKind {
     BlockMustEndAtFirstReturn,
     IdentifierIsNotDeclared(String),
+    FunctionIsNotDefined(String),
 }
 
 impl HasReason for SemanticErrorKind {
@@ -159,6 +160,9 @@ impl HasReason for SemanticErrorKind {
             }
             SemanticErrorKind::IdentifierIsNotDeclared(name) => {
                 format!("Identifier `{}` is not declared.", name)
+            }
+            SemanticErrorKind::FunctionIsNotDefined(name) => {
+                format!("Function `{}` is not defined.", name)
             }
         }
     }

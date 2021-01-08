@@ -6,6 +6,22 @@ pub enum IdentifierKind {
     Variable,
 }
 
+impl IdentifierKind {
+    fn is_func(&self) -> bool {
+        match self {
+            IdentifierKind::Function => true,
+            _ => false,
+        }
+    }
+
+    fn is_var(&self) -> bool {
+        match self {
+            IdentifierKind::Variable => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct IdentifierInformation {
     kind: IdentifierKind,
@@ -36,7 +52,21 @@ impl IdentifierManager {
         self.book.get(name)
     }
 
+    pub fn exist_variable(&self, name: &String) -> bool {
+        match self.book.get(name) {
+            Some(info) => info.kind.is_var(),
+            _ => false,
+        }
+    }
+
+    pub fn exist_function(&self, name: &String) -> bool {
+        match self.book.get(name) {
+            Some(info) => info.kind.is_func(),
+            _ => false,
+        }
+    }
+
     pub fn set_name(&mut self, name: String, info: IdentifierInformation) {
-        self.book.insert(name, info.clone());
+        self.book.insert(name, info);
     }
 }

@@ -1,6 +1,8 @@
+pub mod identifier;
+
 use super::ast::{ASTKind, AST};
 use super::error::{SemanticError, SemanticErrorKind, SemanticResult};
-use super::identifier::{IdentifierInformation, IdentifierKind, IdentifierManager};
+use identifier::{IdentifierInformation, IdentifierKind, IdentifierManager};
 
 pub struct SemanticAnalyzer {
     id_manager: IdentifierManager,
@@ -16,7 +18,7 @@ impl SemanticAnalyzer {
     }
 
     pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<()> {
-        self.semantic_analyze_func(ast);
+        self.semantic_analyze_program(ast);
         if self.errors.is_empty() {
             Ok(())
         } else {
@@ -24,9 +26,24 @@ impl SemanticAnalyzer {
         }
     }
 
+    fn semantic_analyze_program(&mut self, ast: AST) {
+        match ast.kind {
+            ASTKind::Program(asts) => {
+                for ast in asts {
+                    self.semantic_analyze_func(ast);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
     fn semantic_analyze_func(&mut self, ast: AST) {
         match ast.kind {
-            ASTKind::Func(_, block) => self.semantic_analyze_block(*block),
+            ASTKind::Func(name, block) => {
+                let info = IdentifierInformation::new(IdentifierKind::Function, ast.scope);
+                self.id_manager.set_name(name, info);
+                self.semantic_analyze_block(*block);
+            }
             _ => unreachable!(),
         }
     }
@@ -79,8 +96,15 @@ impl SemanticAnalyzer {
             }
             ASTKind::Integer(_) => {}
             ASTKind::Identifier(name) => {
-                if self.id_manager.get_name(&name).is_none() {
+                if !self.id_manager.exist_variable(&name) {
                     let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
+                    let error = SemanticError::new(kind, ast.location);
+                    self.errors.push(error)
+                }
+            }
+            ASTKind::FuncCall(name) => {
+                if !self.id_manager.exist_function(&name) {
+                    let kind = SemanticErrorKind::FunctionIsNotDefined(name);
                     let error = SemanticError::new(kind, ast.location);
                     self.errors.push(error)
                 }
