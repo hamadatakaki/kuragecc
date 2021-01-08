@@ -1,3 +1,5 @@
-x = 42;
-return x;
-y = 31;
+main() {
+    x = 42;
+    return x;
+    y = 31;
+}

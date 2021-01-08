@@ -1,2 +1,4 @@
-x = 十三;
-return x;
+main() {
+    x = 十三;
+    return x;
+}

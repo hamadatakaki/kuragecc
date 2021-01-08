@@ -1,2 +1,4 @@
-x = 42 + y;
-return z;
+main() {
+    x = 42 + y;
+    return z;
+}

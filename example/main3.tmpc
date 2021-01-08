@@ -1,2 +1,4 @@
-x = 42;
-return x/10;
+main() {
+    x = 42;
+    return x/10;
+}

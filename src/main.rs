@@ -8,7 +8,29 @@ use kuragecc::semantics::SemanticAnalyzer;
 use std::fs;
 
 fn main() {
-    let paths = vec!["example/main4.tmpc"];
+    let paths = vec![
+        "example/main0.tmpc",
+        "example/main1.tmpc",
+        "example/main2.tmpc",
+        "example/main3.tmpc",
+        "example/main4.tmpc",
+        "example/lexer_error.tmpc",
+        "example/parser_error0.tmpc",
+        "example/parser_error1.tmpc",
+        "example/parser_error2.tmpc",
+        "example/parser_error3.tmpc",
+        "example/parser_error4.tmpc",
+        "example/parser_error5.tmpc",
+        "example/parser_error6.tmpc",
+        "example/parser_error7.tmpc",
+        "example/parser_error8.tmpc",
+        "example/parser_error9.tmpc",
+        "example/parser_error10.tmpc",
+        "example/parser_error11.tmpc",
+        "example/semantics_error0.tmpc",
+        "example/semantics_error1.tmpc",
+        "example/semantics_error2.tmpc",
+    ];
     for path in paths {
         println!("=> {}\n", path);
         compile(path);
