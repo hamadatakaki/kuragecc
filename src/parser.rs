@@ -374,23 +374,23 @@ impl Parser {
         }
     }
 
-    fn parse_identifier(&mut self) -> ParserResult<AST> {
-        let token = self.look_and_forward_or_error()?;
-        match token.kind {
-            TokenKind::Identifier(name) => {
-                let kind = ASTKind::Identifier(name);
-                Ok(AST::new(kind, self.scope, token.location))
-            }
-            _ => {
-                let error = ParserError::expected_token(
-                    token.to_string(),
-                    String::from("<identifier>"),
-                    token.location,
-                );
-                Err(error)
-            }
-        }
-    }
+    // fn parse_identifier(&mut self) -> ParserResult<AST> {
+    //     let token = self.look_and_forward_or_error()?;
+    //     match token.kind {
+    //         TokenKind::Identifier(name) => {
+    //             let kind = ASTKind::Identifier(name);
+    //             Ok(AST::new(kind, self.scope, token.location))
+    //         }
+    //         _ => {
+    //             let error = ParserError::expected_token(
+    //                 token.to_string(),
+    //                 String::from("<identifier>"),
+    //                 token.location,
+    //             );
+    //             Err(error)
+    //         }
+    //     }
+    // }
 
     fn parse_identifier_or_call(&mut self) -> ParserResult<AST> {
         let token = self.look_and_forward_or_error()?;
