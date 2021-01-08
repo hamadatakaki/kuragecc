@@ -42,6 +42,7 @@ impl TerminalSymbol for ReservedLiteral {
 #[derive(Debug, Clone)]
 pub enum DelimiterKind {
     Semicolon,
+    Comma,
 }
 
 impl TerminalSymbol for DelimiterKind {
@@ -49,7 +50,7 @@ impl TerminalSymbol for DelimiterKind {
 
     fn contains(literal: char) -> bool {
         match literal {
-            ';' => true,
+            ';' | ',' => true,
             _ => false,
         }
     }
@@ -57,6 +58,7 @@ impl TerminalSymbol for DelimiterKind {
     fn from_literal(literal: char) -> DelimiterKind {
         match literal {
             ';' => DelimiterKind::Semicolon,
+            ',' => DelimiterKind::Comma,
             _ => unreachable!(),
         }
     }
@@ -64,6 +66,7 @@ impl TerminalSymbol for DelimiterKind {
     fn to_literal(&self) -> char {
         match self {
             DelimiterKind::Semicolon => ';',
+            DelimiterKind::Comma => ',',
         }
     }
 }

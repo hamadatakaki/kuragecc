@@ -3,7 +3,8 @@ use super::Location;
 
 /*
     program   -> func*
-    func      -> identifier `(` `)` block
+    func      -> identifier `(` args-seq `)` block
+    arg-seq   -> [(identifier `,`)* identifier]?
     block     -> `{` stmt* `}`
     stmt      -> assign | return
     assign    -> identifier `=` expr `;`
@@ -15,7 +16,8 @@ use super::Location;
     unary     -> (`+`|`-`) factor | factor
     factor    -> `(` expr `)` | value
     value     -> integer | identifier | call-func
-    call-func -> identifier `(` `)`
+    call-func -> identifier `(` value-seq `)`
+    value-seq -> [(value `,`)* value]?
 */
 
 #[derive(Debug, Clone)]
@@ -60,6 +62,13 @@ impl std::fmt::Display for AST {
             }
             ASTKind::Func(name, block) => {
                 write!(f, "{}:\n{}", name, block)
+                // print!("{}", name);
+                // let args = args
+                //     .iter()
+                //     .map(|arg| format!("{}", arg))
+                //     .collect::<Vec<String>>();
+                // let args = args.join(" ");
+                // write!(f, "{} {}:\n{}", name, args, block)
             }
             ASTKind::Block(asts) => {
                 for ast in asts {
@@ -68,13 +77,19 @@ impl std::fmt::Display for AST {
                 }
                 write!(f, "")
             }
-            ASTKind::Return(ast) => write!(f, "return [{}]", *ast),
+            ASTKind::Return(ast) => write!(f, "return {}", *ast),
             ASTKind::Assign(id, expr) => write!(f, "{} {} =", id, *expr),
             ASTKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
             ASTKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
             ASTKind::Identifier(name) => write!(f, "{}", name),
             ASTKind::Integer(n) => write!(f, "{}", n),
             ASTKind::FuncCall(name) => write!(f, "{}()", name),
+            // let args = args
+            //     .iter()
+            //     .map(|arg| format!("{}", arg))
+            //     .collect::<Vec<String>>();
+            // let args = args.join(", ");
+            // write!(f, "{}({})", name, args)
         }
     }
 }
@@ -121,6 +136,8 @@ fn rec_visualize_ast(ast: AST, i: usize) {
         }
         ASTKind::Identifier(name) => println!("Identifier <scope: {}> {},", ast.scope, name),
         ASTKind::Integer(n) => println!("Integer <scope: {}> {},", ast.scope, n),
-        ASTKind::FuncCall(name) => println!("FunctionCalled <scope: {}> {},", ast.scope, name),
+        ASTKind::FuncCall(name) => {
+            println!("FunctionCalled <scope: {}> {},", ast.scope, name)
+        }
     }
 }
