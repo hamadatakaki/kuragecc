@@ -2,23 +2,26 @@ use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::Location;
 
 /*
-    func   -> identifier `(` `)` block
-    block  -> `{` stmt* `}`
-    stmt   -> assign | return
-    assign -> identifier `=` expr `;`
-    return -> `return` expr `;`
-    expr   -> term expr'
-    expr'  -> (`+`|`-`) term expr' | epsilon
-    term   -> unary term'
-    term'  -> (`*`|`/`) unary term' | epsilon
-    unary  -> (`+`|`-`) factor | factor
-    factor -> `(` expr `)` | value
-    value  -> integer | identifier
+    program   -> func*
+    func      -> identifier `(` `)` block
+    block     -> `{` stmt* `}`
+    stmt      -> assign | return
+    assign    -> identifier `=` expr `;`
+    return    -> `return` expr `;`
+    expr      -> term expr'
+    expr'     -> (`+`|`-`) term expr' | epsilon
+    term      -> unary term'
+    term'     -> (`*`|`/`) unary term' | epsilon
+    unary     -> (`+`|`-`) factor | factor
+    factor    -> `(` expr `)` | value
+    value     -> integer | identifier | call-func
+    call-func -> identifier `(` `)`
 */
 
 #[derive(Debug, Clone)]
 pub enum ASTKind {
-    Func(Box<AST>, Box<AST>),
+    Program(Vec<AST>),
+    Func(String, Box<AST>),
     Block(Vec<AST>),
     Assign(String, Box<AST>),
     Return(Box<AST>),
@@ -26,6 +29,7 @@ pub enum ASTKind {
     Unary(Box<AST>, OperatorKind),
     Identifier(String),
     Integer(u32),
+    FuncCall(String),
 }
 
 #[derive(Debug, Clone)]
@@ -48,8 +52,14 @@ impl AST {
 impl std::fmt::Display for AST {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self.kind.clone() {
-            ASTKind::Func(identifier, block) => {
-                write!(f, "{}:\n{}", identifier, block)
+            ASTKind::Program(asts) => {
+                for ast in asts {
+                    println!("{}", ast);
+                }
+                write!(f, "")
+            }
+            ASTKind::Func(name, block) => {
+                write!(f, "{}:\n{}", name, block)
             }
             ASTKind::Block(asts) => {
                 for ast in asts {
@@ -64,6 +74,7 @@ impl std::fmt::Display for AST {
             ASTKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
             ASTKind::Identifier(name) => write!(f, "{}", name),
             ASTKind::Integer(n) => write!(f, "{}", n),
+            ASTKind::FuncCall(name) => write!(f, "{}()", name),
         }
     }
 }
@@ -75,8 +86,14 @@ pub fn visualize_ast(ast: AST) {
 fn rec_visualize_ast(ast: AST, i: usize) {
     print!("{}", "  ".repeat(i));
     match ast.kind.clone() {
-        ASTKind::Func(identifier, block) => {
-            println!("Function <scope: {}> {}:", ast.scope, identifier);
+        ASTKind::Program(asts) => {
+            println!("Program:");
+            for ast in asts {
+                rec_visualize_ast(ast, i + 1);
+            }
+        }
+        ASTKind::Func(name, block) => {
+            println!("Function <scope: {}> {}:", ast.scope, name);
             rec_visualize_ast(*block, i + 1);
         }
         ASTKind::Block(asts) => {
@@ -104,5 +121,6 @@ fn rec_visualize_ast(ast: AST, i: usize) {
         }
         ASTKind::Identifier(name) => println!("Identifier <scope: {}> {},", ast.scope, name),
         ASTKind::Integer(n) => println!("Integer <scope: {}> {},", ast.scope, n),
+        ASTKind::FuncCall(name) => println!("FunctionCalled <scope: {}> {},", ast.scope, name),
     }
 }

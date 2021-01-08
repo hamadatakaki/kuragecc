@@ -38,12 +38,39 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> ParserResult<AST> {
-        self.parse_func()
+        self.parse_program()
+    }
+
+    fn parse_program(&mut self) -> ParserResult<AST> {
+        // program -> func*
+        let mut blocks = vec![];
+        let token = self.look_or_error()?;
+        let start = token.location;
+        while !self.at_end() {
+            let ast = self.parse_func()?;
+            blocks.push(ast);
+        }
+        let end = blocks.last().unwrap().location;
+        let loc = start.extend_to(end);
+        let kind = ASTKind::Program(blocks);
+        Ok(AST::new(kind, self.scope, loc))
     }
 
     fn parse_func(&mut self) -> ParserResult<AST> {
         // func   -> identifier `(` `)` block
-        let identifier = self.parse_identifier()?;
+        let token = self.look_and_forward_or_error()?;
+        let name = match token.kind {
+            TokenKind::Identifier(name) => name,
+            _ => {
+                let error = ParserError::expected_token(
+                    token.to_string(),
+                    String::from("<identifier>"),
+                    token.location,
+                );
+                return Err(error);
+            }
+        };
+
         let normal_open = self.look_and_forward_or_error()?;
         let normal_close = self.look_and_forward_or_error()?;
 
@@ -72,8 +99,8 @@ impl Parser {
         }
 
         let block = self.parse_block()?;
-        let loc = identifier.location.extend_to(block.location);
-        let kind = ASTKind::Func(Box::new(identifier), Box::new(block));
+        let loc = token.location.extend_to(block.location);
+        let kind = ASTKind::Func(name, Box::new(block));
         Ok(AST::new(kind, self.scope, loc))
     }
 
@@ -317,11 +344,11 @@ impl Parser {
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Integer(_) => self.parse_integer(),
-            TokenKind::Identifier(_) => self.parse_identifier(),
+            TokenKind::Identifier(_) => self.parse_identifier_or_call(),
             _ => {
                 let error = ParserError::expected_token(
                     token.to_string(),
-                    String::from("<number> / <identifier> / <paren-expr>"),
+                    String::from("<number> / <identifier>"),
                     token.location,
                 );
                 Err(error)
@@ -363,6 +390,50 @@ impl Parser {
                 Err(error)
             }
         }
+    }
+
+    fn parse_identifier_or_call(&mut self) -> ParserResult<AST> {
+        let token = self.look_and_forward_or_error()?;
+        let name = match token.kind {
+            TokenKind::Identifier(name) => name,
+            _ => {
+                let error = ParserError::expected_token(
+                    token.to_string(),
+                    String::from("<identifier>"),
+                    token.location,
+                );
+                return Err(error);
+            }
+        };
+
+        let normal_open = self.look_or_error()?;
+
+        match normal_open.kind {
+            TokenKind::Paren(paren) if paren.is_literal('(') => {}
+            _ => {
+                let kind = ASTKind::Identifier(name);
+                return Ok(AST::new(kind, self.scope, token.location));
+            }
+        }
+
+        self.forward();
+        let normal_close = self.look_and_forward_or_error()?;
+
+        match normal_close.kind {
+            TokenKind::Paren(paren) if paren.is_literal(')') => {}
+            _ => {
+                let error = ParserError::expected_token(
+                    normal_close.to_string(),
+                    String::from(")"),
+                    normal_close.location,
+                );
+                return Err(error);
+            }
+        };
+
+        let kind = ASTKind::FuncCall(name);
+        let loc = token.location.extend_to(normal_close.location);
+        Ok(AST::new(kind, self.scope, loc))
     }
 }
 
