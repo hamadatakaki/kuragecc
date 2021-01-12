@@ -46,20 +46,27 @@ impl SemanticAnalyzer {
                 params,
                 block,
             } => {
+                // 関数名のスコープを記憶
+                let info = IdentifierInformation::new(name, params.len(), ast.scope);
+                self.func_manager.push_info(info);
+
+                // スコープを一段階深くし、関数引数のスコープを記憶
                 self.var_manager.memory_scope();
-                for param in params.clone() {
+                for param in params {
                     match param.kind {
                         ASTKind::Identifier(name) => {
-                            let info = IdentifierInformation::new(name, 0, ast.scope + 1);
+                            let info = IdentifierInformation::new(name, 0, param.scope);
                             self.var_manager.push_info(info);
                         }
                         _ => unreachable!(),
                     }
                 }
 
-                let info = IdentifierInformation::new(name, params.len(), ast.scope);
-                self.func_manager.push_info(info);
+                // 関数定義内の解析
                 self.semantic_analyze_block(*block);
+
+                // 関数のスコープから抜ける処理
+                self.var_manager.down_scope();
             }
             _ => unreachable!(),
         }
@@ -71,7 +78,6 @@ impl SemanticAnalyzer {
                 for line in lines {
                     self.semantic_analyze_stmt(line);
                 }
-                self.var_manager.down_scope();
             }
             _ => unreachable!(),
         }
@@ -88,9 +94,12 @@ impl SemanticAnalyzer {
     fn semantic_analyze_assign(&mut self, ast: AST) {
         match ast.kind {
             ASTKind::Assign(name, expr) => {
+                // exprを解析
+                self.semantic_analyze_expr(*expr);
+
+                // 新たな変数名を追加
                 let info = IdentifierInformation::new(name, 0, ast.scope);
                 self.var_manager.push_info(info);
-                self.semantic_analyze_expr(*expr)
             }
             _ => unreachable!(),
         }
@@ -114,6 +123,7 @@ impl SemanticAnalyzer {
             }
             ASTKind::Integer(_) => {}
             ASTKind::Identifier(name) => {
+                // 該当の変数がなければIdentifierIsNotDeclaredを吐く
                 if self.var_manager.search_name(&name).is_none() {
                     let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
                     let error = SemanticError::new(kind, ast.location);
@@ -122,6 +132,7 @@ impl SemanticAnalyzer {
             }
             ASTKind::FuncCall { name, args } => match self.func_manager.search_name(&name) {
                 Some(info) => {
+                    // 引数の数をチェック
                     if !info.equal_param_size(args.len()) {
                         let kind = SemanticErrorKind::DifferentNumbersArgsTaken(
                             name,

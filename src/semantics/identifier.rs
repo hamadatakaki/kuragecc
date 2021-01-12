@@ -40,8 +40,8 @@ impl IdentifierInformation {
         self.param_size == n
     }
 
-    pub fn is_same_name(&self, name: String) -> bool {
-        self.name == name
+    pub fn is_same_name(&self, name: &String) -> bool {
+        self.name == name.clone()
     }
 }
 
@@ -60,25 +60,15 @@ impl IdentifierManager {
     }
 
     pub fn search_name(&mut self, name: &String) -> Option<IdentifierInformation> {
-        let mut stack = Vec::new();
-        let return_info;
-        loop {
-            if let Some(info) = self.stack.last() {
-                if info.is_same_name(name.clone()) {
-                    return_info = Some(info.clone());
-                    break;
-                } else {
-                    stack.push(self.stack.pop().unwrap());
+        let l = self.stack.len() - 1;
+        for k in 0..l + 1 {
+            if let Some(info) = self.stack.get(l - k) {
+                if info.is_same_name(name) {
+                    return Some(info.clone());
                 }
-            } else {
-                return_info = None;
-                break;
             }
         }
-        while !stack.is_empty() {
-            self.stack.push(stack.pop().unwrap());
-        }
-        return_info
+        None
     }
 
     pub fn push_info(&mut self, info: IdentifierInformation) {
