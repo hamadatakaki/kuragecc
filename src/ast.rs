@@ -3,8 +3,8 @@ use super::Location;
 
 /*
     program   -> func*
-    func      -> identifier `(` args-seq `)` block
-    arg-seq   -> [(identifier `,`)* identifier]?
+    func      -> identifier `(` param-seq `)` block
+    param-seq   -> [(identifier `,`)* identifier]?
     block     -> `{` stmt* `}`
     stmt      -> assign | return
     assign    -> identifier `=` expr `;`
@@ -16,14 +16,18 @@ use super::Location;
     unary     -> (`+`|`-`) factor | factor
     factor    -> `(` expr `)` | value
     value     -> integer | identifier | call-func
-    call-func -> identifier `(` value-seq `)`
-    value-seq -> [(value `,`)* value]?
+    call-func -> identifier `(` arg-seq `)`
+    arg-seq -> [(value `,`)* value]?
 */
 
 #[derive(Debug, Clone)]
 pub enum ASTKind {
     Program(Vec<AST>),
-    Func(String, Box<AST>),
+    Func {
+        name: String,
+        params: Vec<AST>,
+        block: Box<AST>,
+    },
     Block(Vec<AST>),
     Assign(String, Box<AST>),
     Return(Box<AST>),
@@ -31,7 +35,10 @@ pub enum ASTKind {
     Unary(Box<AST>, OperatorKind),
     Identifier(String),
     Integer(u32),
-    FuncCall(String),
+    FuncCall {
+        name: String,
+        args: Vec<AST>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -60,15 +67,17 @@ impl std::fmt::Display for AST {
                 }
                 write!(f, "")
             }
-            ASTKind::Func(name, block) => {
-                write!(f, "{}:\n{}", name, block)
-                // print!("{}", name);
-                // let args = args
-                //     .iter()
-                //     .map(|arg| format!("{}", arg))
-                //     .collect::<Vec<String>>();
-                // let args = args.join(" ");
-                // write!(f, "{} {}:\n{}", name, args, block)
+            ASTKind::Func {
+                name,
+                params,
+                block,
+            } => {
+                let param_string = params
+                    .iter()
+                    .map(|arg| format!("{}", arg))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "{}({}):\n{}", name, param_string, block)
             }
             ASTKind::Block(asts) => {
                 for ast in asts {
@@ -83,13 +92,14 @@ impl std::fmt::Display for AST {
             ASTKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
             ASTKind::Identifier(name) => write!(f, "{}", name),
             ASTKind::Integer(n) => write!(f, "{}", n),
-            ASTKind::FuncCall(name) => write!(f, "{}()", name),
-            // let args = args
-            //     .iter()
-            //     .map(|arg| format!("{}", arg))
-            //     .collect::<Vec<String>>();
-            // let args = args.join(", ");
-            // write!(f, "{}({})", name, args)
+            ASTKind::FuncCall { name, args } => {
+                let arg_string = args
+                    .iter()
+                    .map(|arg| format!("{}", arg))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "{}({})", name, arg_string)
+            }
         }
     }
 }
@@ -107,8 +117,20 @@ fn rec_visualize_ast(ast: AST, i: usize) {
                 rec_visualize_ast(ast, i + 1);
             }
         }
-        ASTKind::Func(name, block) => {
-            println!("Function <scope: {}> {}:", ast.scope, name);
+        ASTKind::Func {
+            name,
+            params,
+            block,
+        } => {
+            let param_string = params
+                .iter()
+                .map(|arg| format!("{}", arg))
+                .collect::<Vec<String>>()
+                .join(", ");
+            println!(
+                "Function <scope: {}> {}({}):",
+                ast.scope, name, param_string
+            );
             rec_visualize_ast(*block, i + 1);
         }
         ASTKind::Block(asts) => {
@@ -136,8 +158,16 @@ fn rec_visualize_ast(ast: AST, i: usize) {
         }
         ASTKind::Identifier(name) => println!("Identifier <scope: {}> {},", ast.scope, name),
         ASTKind::Integer(n) => println!("Integer <scope: {}> {},", ast.scope, n),
-        ASTKind::FuncCall(name) => {
-            println!("FunctionCalled <scope: {}> {},", ast.scope, name)
+        ASTKind::FuncCall { name, args } => {
+            let arg_string = args
+                .iter()
+                .map(|arg| format!("{}", arg))
+                .collect::<Vec<String>>()
+                .join(", ");
+            println!(
+                "FunctionCalled <scope: {}> {}({})",
+                ast.scope, name, arg_string
+            )
         }
     }
 }

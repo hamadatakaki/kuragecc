@@ -72,7 +72,6 @@ impl Parser {
         };
 
         let normal_open = self.look_and_forward_or_error()?;
-        let normal_close = self.look_and_forward_or_error()?;
 
         match normal_open.kind {
             TokenKind::Paren(paren) if paren.is_literal('(') => {}
@@ -85,6 +84,10 @@ impl Parser {
                 return Err(error);
             }
         }
+
+        let params = self.parse_func_params()?;
+
+        let normal_close = self.look_and_forward_or_error()?;
 
         match normal_close.kind {
             TokenKind::Paren(paren) if paren.is_literal(')') => {}
@@ -100,8 +103,17 @@ impl Parser {
 
         let block = self.parse_block()?;
         let loc = token.location.extend_to(block.location);
-        let kind = ASTKind::Func(name, Box::new(block));
+        let kind = ASTKind::Func {
+            name,
+            params,
+            block: Box::new(block),
+        };
         Ok(AST::new(kind, self.scope, loc))
+    }
+
+    fn parse_func_params(&mut self) -> ParserResult<Vec<AST>> {
+        // TODO: 正しいparamsのparseの実装
+        Ok(Vec::new())
     }
 
     fn parse_block(&mut self) -> ParserResult<AST> {
@@ -417,6 +429,9 @@ impl Parser {
         }
 
         self.forward();
+
+        let args = self.parse_func_call_args()?;
+
         let normal_close = self.look_and_forward_or_error()?;
 
         match normal_close.kind {
@@ -431,9 +446,14 @@ impl Parser {
             }
         };
 
-        let kind = ASTKind::FuncCall(name);
+        let kind = ASTKind::FuncCall { name, args };
         let loc = token.location.extend_to(normal_close.location);
         Ok(AST::new(kind, self.scope, loc))
+    }
+
+    fn parse_func_call_args(&self) -> ParserResult<Vec<AST>> {
+        // TODO: 正しいargsのparseの実装
+        Ok(Vec::new())
     }
 }
 

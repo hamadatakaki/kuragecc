@@ -39,7 +39,11 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_func(&mut self, ast: AST) {
         match ast.kind {
-            ASTKind::Func(name, block) => {
+            ASTKind::Func {
+                name,
+                params,
+                block,
+            } => {
                 let info = IdentifierInformation::new(IdentifierKind::Function, ast.scope);
                 self.id_manager.set_name(name, info);
                 self.semantic_analyze_block(*block);
@@ -102,7 +106,7 @@ impl SemanticAnalyzer {
                     self.errors.push(error)
                 }
             }
-            ASTKind::FuncCall(name) => {
+            ASTKind::FuncCall { name, args } => {
                 if !self.id_manager.exist_function(&name) {
                     let kind = SemanticErrorKind::FunctionIsNotDefined(name);
                     let error = SemanticError::new(kind, ast.location);

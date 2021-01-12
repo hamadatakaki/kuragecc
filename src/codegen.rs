@@ -46,8 +46,12 @@ impl CodeGenerator {
 
     fn gen_func(&mut self, ast: AST) {
         match ast.kind {
-            ASTKind::Func(identifier, block) => {
-                let expr = Expression::Symbol(Symbol(format!("{}", identifier)));
+            ASTKind::Func {
+                name,
+                params,
+                block,
+            } => {
+                let expr = Expression::Symbol(Symbol(format!("{}", name)));
                 self.codes.push(Code::DefineOpen(expr));
                 self.gen_block(*block);
                 self.codes.push(Code::DefineClose);
@@ -123,7 +127,7 @@ impl CodeGenerator {
                 Some(sym) => Expression::Symbol(sym.clone()),
                 None => unreachable!(),
             },
-            ASTKind::FuncCall(name) => {
+            ASTKind::FuncCall { name, args } => {
                 let assigned = self.table.anonymous_symbol();
                 let assigned = Expression::Symbol(assigned);
                 let code = Code::FuncCall(name, assigned.clone());
