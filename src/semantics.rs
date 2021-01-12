@@ -46,8 +46,19 @@ impl SemanticAnalyzer {
                 params,
                 block,
             } => {
-                let info = IdentifierInformation::new(params.len(), ast.scope);
-                self.func_manager.set_name(name, info);
+                self.var_manager.memory_scope();
+                for param in params.clone() {
+                    match param.kind {
+                        ASTKind::Identifier(name) => {
+                            let info = IdentifierInformation::new(name, 0, ast.scope + 1);
+                            self.var_manager.push_info(info);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+
+                let info = IdentifierInformation::new(name, params.len(), ast.scope);
+                self.func_manager.push_info(info);
                 self.semantic_analyze_block(*block);
             }
             _ => unreachable!(),
@@ -60,6 +71,7 @@ impl SemanticAnalyzer {
                 for line in lines {
                     self.semantic_analyze_stmt(line);
                 }
+                self.var_manager.down_scope();
             }
             _ => unreachable!(),
         }
@@ -76,8 +88,8 @@ impl SemanticAnalyzer {
     fn semantic_analyze_assign(&mut self, ast: AST) {
         match ast.kind {
             ASTKind::Assign(name, expr) => {
-                let info = IdentifierInformation::new(0, ast.scope);
-                self.var_manager.set_name(name, info);
+                let info = IdentifierInformation::new(name, 0, ast.scope);
+                self.var_manager.push_info(info);
                 self.semantic_analyze_expr(*expr)
             }
             _ => unreachable!(),
@@ -102,15 +114,14 @@ impl SemanticAnalyzer {
             }
             ASTKind::Integer(_) => {}
             ASTKind::Identifier(name) => {
-                if !self.var_manager.exist(&name) {
+                if self.var_manager.search_name(&name).is_none() {
                     let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
                     let error = SemanticError::new(kind, ast.location);
                     self.errors.push(error)
                 }
             }
-            ASTKind::FuncCall { name, args } => match self.func_manager.get_name(&name) {
+            ASTKind::FuncCall { name, args } => match self.func_manager.search_name(&name) {
                 Some(info) => {
-                    let info = info.clone();
                     if !info.equal_param_size(args.len()) {
                         let kind = SemanticErrorKind::DifferentNumbersArgsTaken(
                             name,

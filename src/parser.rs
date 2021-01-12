@@ -118,6 +118,7 @@ impl Parser {
         let mut token = self.look_or_error()?;
         match token.kind {
             TokenKind::Identifier(name) => {
+                self.scope += 1;
                 let kind = ASTKind::Identifier(name);
                 let ast = AST::new(kind, self.scope, token.location);
                 v.push(ast);
@@ -134,6 +135,7 @@ impl Parser {
                     let identifier = self.parse_identifier()?;
                     v.push(identifier);
                 }
+                self.scope -= 1;
             }
             _ => {}
         }

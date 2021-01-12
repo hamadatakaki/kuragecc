@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 // #[derive(Debug, Clone)]
 // pub enum IdentifierKind {
-//     Function(usize), // paramの数
+//     Function,
 //     Variable,
 // }
 
@@ -24,41 +22,78 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct IdentifierInformation {
+    name: String,
     pub param_size: usize,
-    scope: i32,
+    pub scope: i32,
 }
 
 impl IdentifierInformation {
-    pub fn new(param_size: usize, scope: i32) -> Self {
-        Self { param_size, scope }
+    pub fn new(name: String, param_size: usize, scope: i32) -> Self {
+        Self {
+            name,
+            param_size,
+            scope,
+        }
     }
 
     pub fn equal_param_size(&self, n: usize) -> bool {
         self.param_size == n
     }
+
+    pub fn is_same_name(&self, name: String) -> bool {
+        self.name == name
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct IdentifierManager {
-    book: HashMap<String, IdentifierInformation>,
+    table: Vec<usize>,
+    stack: Vec<IdentifierInformation>,
 }
 
 impl IdentifierManager {
     pub fn new() -> Self {
         Self {
-            book: HashMap::new(),
+            table: vec![0],
+            stack: Vec::new(),
         }
     }
 
-    pub fn get_name(&self, name: &String) -> Option<&IdentifierInformation> {
-        self.book.get(name)
+    pub fn search_name(&mut self, name: &String) -> Option<IdentifierInformation> {
+        let mut stack = Vec::new();
+        let return_info;
+        loop {
+            if let Some(info) = self.stack.last() {
+                if info.is_same_name(name.clone()) {
+                    return_info = Some(info.clone());
+                    break;
+                } else {
+                    stack.push(self.stack.pop().unwrap());
+                }
+            } else {
+                return_info = None;
+                break;
+            }
+        }
+        while !stack.is_empty() {
+            self.stack.push(stack.pop().unwrap());
+        }
+        return_info
     }
 
-    pub fn exist(&self, name: &String) -> bool {
-        self.book.get(name).is_some()
+    pub fn push_info(&mut self, info: IdentifierInformation) {
+        self.stack.push(info);
     }
 
-    pub fn set_name(&mut self, name: String, info: IdentifierInformation) {
-        self.book.insert(name, info);
+    pub fn memory_scope(&mut self) {
+        self.table.push(self.stack.len())
+    }
+
+    pub fn down_scope(&mut self) {
+        let height = self.table.pop().unwrap();
+        let length = self.stack.len();
+        for _ in height..length {
+            self.stack.pop();
+        }
     }
 }
