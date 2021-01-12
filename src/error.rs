@@ -150,6 +150,7 @@ pub enum SemanticErrorKind {
     BlockMustEndAtFirstReturn,
     IdentifierIsNotDeclared(String),
     FunctionIsNotDefined(String),
+    DifferentNumbersArgsTaken(String, usize, usize),
 }
 
 impl HasReason for SemanticErrorKind {
@@ -163,6 +164,14 @@ impl HasReason for SemanticErrorKind {
             }
             SemanticErrorKind::FunctionIsNotDefined(name) => {
                 format!("Function `{}` is not defined.", name)
+            }
+            SemanticErrorKind::DifferentNumbersArgsTaken(name, actual, expected) => {
+                let s_actual = if *actual == 1 { "" } else { "s" };
+                let s_expected = if *expected == 1 { "" } else { "s" };
+                format!(
+                    "Function `{}` expected to be taken {} arg{}, but given {} arg{}.",
+                    name, expected, s_expected, actual, s_actual
+                )
             }
         }
     }

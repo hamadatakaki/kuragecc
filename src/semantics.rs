@@ -2,17 +2,19 @@ pub mod identifier;
 
 use super::ast::{ASTKind, AST};
 use super::error::{SemanticError, SemanticErrorKind, SemanticResult};
-use identifier::{IdentifierInformation, IdentifierKind, IdentifierManager};
+use identifier::{IdentifierInformation, IdentifierManager};
 
 pub struct SemanticAnalyzer {
-    id_manager: IdentifierManager,
+    var_manager: IdentifierManager,
+    func_manager: IdentifierManager,
     errors: Vec<SemanticError>,
 }
 
 impl SemanticAnalyzer {
     pub fn new() -> Self {
         Self {
-            id_manager: IdentifierManager::new(),
+            var_manager: IdentifierManager::new(),
+            func_manager: IdentifierManager::new(),
             errors: Vec::new(),
         }
     }
@@ -44,8 +46,8 @@ impl SemanticAnalyzer {
                 params,
                 block,
             } => {
-                let info = IdentifierInformation::new(IdentifierKind::Function, ast.scope);
-                self.id_manager.set_name(name, info);
+                let info = IdentifierInformation::new(params.len(), ast.scope);
+                self.func_manager.set_name(name, info);
                 self.semantic_analyze_block(*block);
             }
             _ => unreachable!(),
@@ -74,8 +76,8 @@ impl SemanticAnalyzer {
     fn semantic_analyze_assign(&mut self, ast: AST) {
         match ast.kind {
             ASTKind::Assign(name, expr) => {
-                let info = IdentifierInformation::new(IdentifierKind::Variable, ast.scope);
-                self.id_manager.set_name(name, info);
+                let info = IdentifierInformation::new(0, ast.scope);
+                self.var_manager.set_name(name, info);
                 self.semantic_analyze_expr(*expr)
             }
             _ => unreachable!(),
@@ -100,19 +102,31 @@ impl SemanticAnalyzer {
             }
             ASTKind::Integer(_) => {}
             ASTKind::Identifier(name) => {
-                if !self.id_manager.exist_variable(&name) {
+                if !self.var_manager.exist(&name) {
                     let kind = SemanticErrorKind::IdentifierIsNotDeclared(name);
                     let error = SemanticError::new(kind, ast.location);
                     self.errors.push(error)
                 }
             }
-            ASTKind::FuncCall { name, args } => {
-                if !self.id_manager.exist_function(&name) {
+            ASTKind::FuncCall { name, args } => match self.func_manager.get_name(&name) {
+                Some(info) => {
+                    let info = info.clone();
+                    if !info.equal_param_size(args.len()) {
+                        let kind = SemanticErrorKind::DifferentNumbersArgsTaken(
+                            name,
+                            args.len(),
+                            info.param_size,
+                        );
+                        let error = SemanticError::new(kind, ast.location);
+                        self.errors.push(error)
+                    }
+                }
+                None => {
                     let kind = SemanticErrorKind::FunctionIsNotDefined(name);
                     let error = SemanticError::new(kind, ast.location);
                     self.errors.push(error)
                 }
-            }
+            },
             _ => unreachable!(),
         }
     }
