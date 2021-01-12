@@ -1,0 +1,13 @@
+three() {
+    return 3;
+}
+
+func(x, y, z) {
+    return (x+z) * y;
+}
+
+main() {
+    a = 7;
+    x = func(3, a, three());
+    return x;
+}
