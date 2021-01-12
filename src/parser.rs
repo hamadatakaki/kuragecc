@@ -57,7 +57,7 @@ impl Parser {
     }
 
     fn parse_func(&mut self) -> ParserResult<AST> {
-        // func   -> identifier `(` `)` block
+        // func -> identifier `(` param-seq `)` block
         let token = self.look_and_forward_or_error()?;
         let name = match token.kind {
             TokenKind::Identifier(name) => name,
@@ -112,8 +112,33 @@ impl Parser {
     }
 
     fn parse_func_params(&mut self) -> ParserResult<Vec<AST>> {
-        // TODO: 正しいparamsのparseの実装
-        Ok(Vec::new())
+        // param-seq -> identifier (`,` identifier)* | epsilon
+
+        let mut v = vec![];
+        let mut token = self.look_or_error()?;
+        match token.kind {
+            TokenKind::Identifier(name) => {
+                let kind = ASTKind::Identifier(name);
+                let ast = AST::new(kind, self.scope, token.location);
+                v.push(ast);
+                self.forward();
+
+                loop {
+                    token = self.look_or_error()?;
+                    match token.kind {
+                        TokenKind::Delimiter(delimiter) if delimiter.is_literal(',') => {
+                            self.forward()
+                        }
+                        _ => break,
+                    };
+                    let identifier = self.parse_identifier()?;
+                    v.push(identifier);
+                }
+            }
+            _ => {}
+        }
+
+        Ok(v)
     }
 
     fn parse_block(&mut self) -> ParserResult<AST> {
@@ -352,7 +377,7 @@ impl Parser {
     }
 
     fn parse_value(&mut self) -> ParserResult<AST> {
-        // value -> integer | identifier
+        // value -> integer | identifier | call-func
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Integer(_) => self.parse_integer(),
@@ -386,23 +411,23 @@ impl Parser {
         }
     }
 
-    // fn parse_identifier(&mut self) -> ParserResult<AST> {
-    //     let token = self.look_and_forward_or_error()?;
-    //     match token.kind {
-    //         TokenKind::Identifier(name) => {
-    //             let kind = ASTKind::Identifier(name);
-    //             Ok(AST::new(kind, self.scope, token.location))
-    //         }
-    //         _ => {
-    //             let error = ParserError::expected_token(
-    //                 token.to_string(),
-    //                 String::from("<identifier>"),
-    //                 token.location,
-    //             );
-    //             Err(error)
-    //         }
-    //     }
-    // }
+    fn parse_identifier(&mut self) -> ParserResult<AST> {
+        let token = self.look_and_forward_or_error()?;
+        match token.kind {
+            TokenKind::Identifier(name) => {
+                let kind = ASTKind::Identifier(name);
+                Ok(AST::new(kind, self.scope, token.location))
+            }
+            _ => {
+                let error = ParserError::expected_token(
+                    token.to_string(),
+                    String::from("<identifier>"),
+                    token.location,
+                );
+                Err(error)
+            }
+        }
+    }
 
     fn parse_identifier_or_call(&mut self) -> ParserResult<AST> {
         let token = self.look_and_forward_or_error()?;
@@ -451,9 +476,25 @@ impl Parser {
         Ok(AST::new(kind, self.scope, loc))
     }
 
-    fn parse_func_call_args(&self) -> ParserResult<Vec<AST>> {
-        // TODO: 正しいargsのparseの実装
-        Ok(Vec::new())
+    fn parse_func_call_args(&mut self) -> ParserResult<Vec<AST>> {
+        // arg-seq -> value (`,` value)* | epsilon
+
+        let mut v = vec![];
+        if let Ok(value) = self.parse_value() {
+            v.push(value);
+            let mut token: Token;
+            loop {
+                token = self.look_or_error()?;
+                match token.kind {
+                    TokenKind::Delimiter(delimiter) if delimiter.is_literal(',') => self.forward(),
+                    _ => break,
+                };
+                let value = self.parse_value()?;
+                v.push(value);
+            }
+        }
+
+        Ok(v)
     }
 }
 

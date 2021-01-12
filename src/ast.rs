@@ -4,7 +4,7 @@ use super::Location;
 /*
     program   -> func*
     func      -> identifier `(` param-seq `)` block
-    param-seq   -> [(identifier `,`)* identifier]?
+    param-seq -> identifier (`,` identifier)* | epsilon
     block     -> `{` stmt* `}`
     stmt      -> assign | return
     assign    -> identifier `=` expr `;`
@@ -17,7 +17,7 @@ use super::Location;
     factor    -> `(` expr `)` | value
     value     -> integer | identifier | call-func
     call-func -> identifier `(` arg-seq `)`
-    arg-seq -> [(value `,`)* value]?
+    arg-seq   -> value (`,` value)* | epsilon
 */
 
 #[derive(Debug, Clone)]
