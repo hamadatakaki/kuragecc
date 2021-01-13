@@ -75,11 +75,11 @@ impl IdentifierManager {
         self.stack.push(info);
     }
 
-    pub fn memory_scope(&mut self) {
+    pub fn deepen_scope(&mut self) {
         self.table.push(self.stack.len())
     }
 
-    pub fn down_scope(&mut self) {
+    pub fn shallow_scope(&mut self) {
         let height = self.table.pop().unwrap();
         let length = self.stack.len();
         for _ in height..length {

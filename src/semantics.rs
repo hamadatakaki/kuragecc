@@ -51,7 +51,7 @@ impl SemanticAnalyzer {
                 self.func_manager.push_info(info);
 
                 // スコープを一段階深くし、関数引数のスコープを記憶
-                self.var_manager.memory_scope();
+                self.var_manager.deepen_scope();
                 for param in params {
                     match param.kind {
                         ASTKind::Identifier(name) => {
@@ -66,7 +66,7 @@ impl SemanticAnalyzer {
                 self.semantic_analyze_block(*block);
 
                 // 関数のスコープから抜ける処理
-                self.var_manager.down_scope();
+                self.var_manager.shallow_scope();
             }
             _ => unreachable!(),
         }
