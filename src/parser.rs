@@ -1,5 +1,8 @@
-use super::ast::{ASTKind, AST};
-use super::error::{ParserError, ParserErrorKind, ParserResult};
+use super::ast::{
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
+    AST,
+};
+use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
 use super::Inspector;
@@ -42,34 +45,28 @@ impl Parser {
     }
 
     fn parse_program(&mut self) -> ParserResult<AST> {
-        // program -> func*
-        let mut blocks = vec![];
+        // program -> block*
+        let mut program = vec![];
         let token = self.look_or_error()?;
         let start = token.location;
         while !self.at_end() {
-            let ast = self.parse_func()?;
-            blocks.push(ast);
+            let ast = self.parse_block()?;
+            program.push(ast);
         }
-        let end = blocks.last().unwrap().location;
+        let end = program.last().unwrap().get_loc();
         let loc = start.extend_to(end);
-        let kind = ASTKind::Program(blocks);
-        Ok(AST::new(kind, self.scope, loc))
+        Ok(AST::new(program, self.scope, loc))
     }
 
-    fn parse_func(&mut self) -> ParserResult<AST> {
-        // func -> identifier `(` param-seq `)` block
-        let token = self.look_and_forward_or_error()?;
-        let name = match token.kind {
-            TokenKind::Identifier(name) => name,
-            _ => {
-                let error = ParserError::expected_token(
-                    token.to_string(),
-                    String::from("<identifier>"),
-                    token.location,
-                );
-                return Err(error);
-            }
-        };
+    fn parse_block(&mut self) -> ParserResult<ASTBlock> {
+        // block -> func
+        self.parse_func()
+    }
+
+    fn parse_func(&mut self) -> ParserResult<ASTBlock> {
+        // func -> identifier `(` param-seq `)` comp-stmt
+        let identifier = self.parse_identifier()?;
+        let start = identifier.get_loc();
 
         let normal_open = self.look_and_forward_or_error()?;
 
@@ -101,27 +98,24 @@ impl Parser {
             }
         }
 
-        let block = self.parse_block()?;
-        let loc = token.location.extend_to(block.location);
-        let kind = ASTKind::Func {
-            name,
-            params,
-            block: Box::new(block),
-        };
-        Ok(AST::new(kind, self.scope, loc))
+        let stmts = self.parse_comp_stmt()?;
+
+        let end = stmts.last().unwrap().get_loc();
+        let loc = start.extend_to(end);
+        let kind = ASTBlockKind::Func(identifier, params, stmts);
+        Ok(ASTBlock::new(kind, self.scope, loc))
     }
 
-    fn parse_func_params(&mut self) -> ParserResult<Vec<AST>> {
+    fn parse_func_params(&mut self) -> ParserResult<Vec<ASTIdentifier>> {
         // param-seq -> identifier (`,` identifier)* | epsilon
 
-        let mut v = vec![];
+        let mut params = vec![];
         let mut token = self.look_or_error()?;
         match token.kind {
             TokenKind::Identifier(name) => {
                 self.scope += 1;
-                let kind = ASTKind::Identifier(name);
-                let ast = AST::new(kind, self.scope, token.location);
-                v.push(ast);
+                let identifier = ASTIdentifier::new(name, self.scope, token.location);
+                params.push(identifier);
                 self.forward();
 
                 loop {
@@ -133,18 +127,18 @@ impl Parser {
                         _ => break,
                     };
                     let identifier = self.parse_identifier()?;
-                    v.push(identifier);
+                    params.push(identifier);
                 }
                 self.scope -= 1;
             }
             _ => {}
         }
 
-        Ok(v)
+        Ok(params)
     }
 
-    fn parse_block(&mut self) -> ParserResult<AST> {
-        // block  -> `{` stmt* `}`
+    fn parse_comp_stmt(&mut self) -> ParserResult<Vec<ASTStmt>> {
+        // comp-stmt -> `{` stmt* `}
         self.scope += 1;
 
         // { の parse
@@ -161,14 +155,15 @@ impl Parser {
             }
         }
 
+        // stmt* の parse
         let mut token = self.look_or_error()?;
-        let mut lines = vec![];
+        let mut stmts = vec![];
         loop {
             match token.kind {
                 TokenKind::Paren(paren) if paren.is_literal('}') => break,
                 _ => {
-                    let ast = self.parse_stmt()?;
-                    lines.push(ast);
+                    let stmt = self.parse_stmt()?;
+                    stmts.push(stmt);
                 }
             }
             token = self.look_or_error()?;
@@ -190,14 +185,10 @@ impl Parser {
 
         self.scope -= 1;
 
-        let kind = ASTKind::Block(lines);
-        let loc = curly_open.location.extend_to(curly_close.location);
-        let ast = AST::new(kind, self.scope, loc);
-
-        Ok(ast)
+        Ok(stmts)
     }
 
-    fn parse_stmt(&mut self) -> ParserResult<AST> {
+    fn parse_stmt(&mut self) -> ParserResult<ASTStmt> {
         // stmt -> assign | return
         let token = self.look_or_error()?;
         match token.kind {
@@ -216,51 +207,18 @@ impl Parser {
         }
     }
 
-    fn parse_return(&mut self) -> ParserResult<AST> {
-        // return -> `return` expr `;`
-
-        // return の parse
-        let ret = self.look_and_forward().unwrap();
-
-        // expr の parse
-        let expr = self.parse_expr()?;
-
-        // semicolon の parse
-        let semicolon = self.look_and_forward_or_error()?;
-        match semicolon.kind {
-            TokenKind::Delimiter(del) if del.is_literal(';') => {
-                let kind = ASTKind::Return(Box::new(expr));
-                let loc = ret.location.extend_to(semicolon.location);
-                Ok(AST::new(kind, self.scope, loc))
-            }
-            _ => {
-                let kind = ParserErrorKind::NotEndWithSemicolon;
-                let error = ParserError::new(kind, semicolon.location);
-                return Err(error);
-            }
-        }
-    }
-
-    fn parse_assign(&mut self) -> ParserResult<AST> {
+    fn parse_assign(&mut self) -> ParserResult<ASTStmt> {
         // assign -> identifier `=` expr `;`
 
         // identifier の parse
-        let id = self.look_and_forward().unwrap();
-        let name = match id.kind {
-            TokenKind::Identifier(name) => name,
-            _ => {
-                let kind = ParserErrorKind::AssignStartsWithIdentifier;
-                let error = ParserError::new(kind, id.location);
-                return Err(error);
-            }
-        };
+        let id = self.parse_identifier()?;
 
         // '=' の parse
         let equal = self.look_and_forward_or_error()?;
         match equal.kind {
             TokenKind::Operator(ope) if ope.is_literal(String::from("=")) => {}
             _ => {
-                let kind = ParserErrorKind::AssignHasEqualOnSecondToken(name);
+                let kind = ParserErrorKind::AssignHasEqualOnSecondToken(id);
                 let error = ParserError::new(kind, equal.location);
                 return Err(error);
             }
@@ -279,56 +237,81 @@ impl Parser {
             }
         }
 
-        let kind = ASTKind::Assign(name, Box::new(expr));
-        let loc = id.location.extend_to(semicolon.location);
-        Ok(AST::new(kind, self.scope, loc))
+        let loc = id.get_loc().extend_to(semicolon.location);
+        let kind = ASTStmtKind::Assign(id, expr);
+        Ok(ASTStmt::new(kind, self.scope, loc))
     }
 
-    fn parse_expr(&mut self) -> ParserResult<AST> {
+    fn parse_return(&mut self) -> ParserResult<ASTStmt> {
+        // return -> `return` expr `;`
+
+        // return の parse
+        let ret = self.look_and_forward().unwrap();
+
+        // expr の parse
+        let expr = self.parse_expr()?;
+
+        // semicolon の parse
+        let semicolon = self.look_and_forward_or_error()?;
+        match semicolon.kind {
+            TokenKind::Delimiter(del) if del.is_literal(';') => {}
+            _ => {
+                let kind = ParserErrorKind::NotEndWithSemicolon;
+                let error = ParserError::new(kind, semicolon.location);
+                return Err(error);
+            }
+        }
+
+        let kind = ASTStmtKind::Return(expr);
+        let loc = ret.location.extend_to(semicolon.location);
+        Ok(ASTStmt::new(kind, self.scope, loc))
+    }
+
+    fn parse_expr(&mut self) -> ParserResult<ASTExpr> {
         // expr -> term expr'
         let term = self.parse_term()?;
         self.parse_expr_prime(term)
     }
 
-    fn parse_expr_prime(&mut self, expr_left: AST) -> ParserResult<AST> {
+    fn parse_expr_prime(&mut self, expr_left: ASTExpr) -> ParserResult<ASTExpr> {
         // expr'  -> (`+`|`-`) term expr' | epsilon
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_addition() => {
                 self.forward();
                 let term = self.parse_term()?;
-                let loc = expr_left.location.extend_to(term.location);
-                let kind = ASTKind::Binary(Box::new(expr_left), Box::new(term), ope_kind);
-                let expr = AST::new(kind, self.scope, loc);
+                let loc = expr_left.get_loc().extend_to(term.get_loc());
+                let kind = ASTExprKind::Binary(Box::new(expr_left), Box::new(term), ope_kind);
+                let expr = ASTExpr::new(kind, self.scope, loc);
                 self.parse_expr_prime(expr)
             }
             _ => Ok(expr_left),
         }
     }
 
-    fn parse_term(&mut self) -> ParserResult<AST> {
+    fn parse_term(&mut self) -> ParserResult<ASTExpr> {
         // term   -> unary term'
         let unary = self.parse_unary()?;
         self.parse_term_prime(unary)
     }
 
-    fn parse_term_prime(&mut self, term_left: AST) -> ParserResult<AST> {
+    fn parse_term_prime(&mut self, term_left: ASTExpr) -> ParserResult<ASTExpr> {
         // term'  -> (`*`|`/`) unary term' | epsilon
         let token = self.look_or_error()?;
         match token.kind {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_multiplication() => {
                 self.forward();
                 let unary = self.parse_unary()?;
-                let loc = term_left.location.extend_to(unary.location);
-                let kind = ASTKind::Binary(Box::new(term_left), Box::new(unary), ope_kind);
-                let term = AST::new(kind, self.scope, loc);
+                let loc = term_left.get_loc().extend_to(unary.get_loc());
+                let kind = ASTExprKind::Binary(Box::new(term_left), Box::new(unary), ope_kind);
+                let term = ASTExpr::new(kind, self.scope, loc);
                 self.parse_term_prime(term)
             }
             _ => Ok(term_left),
         }
     }
 
-    fn parse_unary(&mut self) -> ParserResult<AST> {
+    fn parse_unary(&mut self) -> ParserResult<ASTExpr> {
         // unary  -> (`+`|`-`) factor | factor
         let token = self.look_or_error()?;
         let ope = match token.kind {
@@ -341,15 +324,15 @@ impl Parser {
         let factor = self.parse_factor()?;
         match ope {
             Some(OperatorKind::Minus) => {
-                let loc = token.location.extend_to(factor.location);
-                let kind = ASTKind::Unary(Box::new(factor), OperatorKind::Minus);
-                Ok(AST::new(kind, self.scope, loc))
+                let loc = token.location.extend_to(factor.get_loc());
+                let kind = ASTExprKind::Unary(Box::new(factor), OperatorKind::Minus);
+                Ok(ASTExpr::new(kind, self.scope, loc))
             }
             _ => Ok(factor),
         }
     }
 
-    fn parse_factor(&mut self) -> ParserResult<AST> {
+    fn parse_factor(&mut self) -> ParserResult<ASTExpr> {
         // factor -> `(` expr `)` | value
         let token = self.look_or_error()?;
         match token.kind {
@@ -360,7 +343,7 @@ impl Parser {
         }
     }
 
-    fn _parse_expr_enclosed_paren(&mut self) -> ParserResult<AST> {
+    fn _parse_expr_enclosed_paren(&mut self) -> ParserResult<ASTExpr> {
         self.forward();
         let expr = self.parse_expr()?;
 
@@ -378,7 +361,7 @@ impl Parser {
         }
     }
 
-    fn parse_value(&mut self) -> ParserResult<AST> {
+    fn parse_value(&mut self) -> ParserResult<ASTExpr> {
         // value -> integer | identifier | call-func
         let token = self.look_or_error()?;
         match token.kind {
@@ -395,12 +378,12 @@ impl Parser {
         }
     }
 
-    fn parse_integer(&mut self) -> ParserResult<AST> {
+    fn parse_integer(&mut self) -> ParserResult<ASTExpr> {
         let token = self.look_and_forward_or_error()?;
         match token.kind {
             TokenKind::Integer(n) => {
-                let kind = ASTKind::Integer(n);
-                Ok(AST::new(kind, self.scope, token.location))
+                let kind = ASTExprKind::Integer(n);
+                Ok(ASTExpr::new(kind, self.scope, token.location))
             }
             _ => {
                 let error = ParserError::expected_token(
@@ -413,13 +396,10 @@ impl Parser {
         }
     }
 
-    fn parse_identifier(&mut self) -> ParserResult<AST> {
+    fn parse_identifier(&mut self) -> ParserResult<ASTIdentifier> {
         let token = self.look_and_forward_or_error()?;
         match token.kind {
-            TokenKind::Identifier(name) => {
-                let kind = ASTKind::Identifier(name);
-                Ok(AST::new(kind, self.scope, token.location))
-            }
+            TokenKind::Identifier(name) => Ok(ASTIdentifier::new(name, self.scope, token.location)),
             _ => {
                 let error = ParserError::expected_token(
                     token.to_string(),
@@ -431,27 +411,16 @@ impl Parser {
         }
     }
 
-    fn parse_identifier_or_call(&mut self) -> ParserResult<AST> {
-        let token = self.look_and_forward_or_error()?;
-        let name = match token.kind {
-            TokenKind::Identifier(name) => name,
-            _ => {
-                let error = ParserError::expected_token(
-                    token.to_string(),
-                    String::from("<identifier>"),
-                    token.location,
-                );
-                return Err(error);
-            }
-        };
+    fn parse_identifier_or_call(&mut self) -> ParserResult<ASTExpr> {
+        let id = self.parse_identifier()?;
 
         let normal_open = self.look_or_error()?;
 
         match normal_open.kind {
             TokenKind::Paren(paren) if paren.is_literal('(') => {}
             _ => {
-                let kind = ASTKind::Identifier(name);
-                return Ok(AST::new(kind, self.scope, token.location));
+                let kind = ASTExprKind::Identifier(id.clone());
+                return Ok(ASTExpr::new(kind, self.scope, id.get_loc()));
             }
         }
 
@@ -473,12 +442,12 @@ impl Parser {
             }
         };
 
-        let kind = ASTKind::FuncCall { name, args };
-        let loc = token.location.extend_to(normal_close.location);
-        Ok(AST::new(kind, self.scope, loc))
+        let loc = id.get_loc().extend_to(normal_close.location);
+        let kind = ASTExprKind::FuncCall(id, args);
+        Ok(ASTExpr::new(kind, self.scope, loc))
     }
 
-    fn parse_func_call_args(&mut self) -> ParserResult<Vec<AST>> {
+    fn parse_func_call_args(&mut self) -> ParserResult<Vec<ASTExpr>> {
         // arg-seq -> value (`,` value)* | epsilon
 
         let mut v = vec![];

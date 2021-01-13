@@ -2,13 +2,17 @@ use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::Location;
 
 /*
-    program   -> func*
-    func      -> identifier `(` param-seq `)` block
+    program -> block*
+
+    block     -> func
+    func      -> identifier `(` param-seq `)` comp-stmt
     param-seq -> identifier (`,` identifier)* | epsilon
-    block     -> `{` stmt* `}`
-    stmt      -> assign | return
-    assign    -> identifier `=` expr `;`
-    return    -> `return` expr `;`
+    comp-stmt -> `{` stmt* `}`
+
+    stmt   -> assign | return
+    assign -> identifier `=` expr `;`
+    return -> `return` expr `;`
+
     expr      -> term expr'
     expr'     -> (`+`|`-`) term expr' | epsilon
     term      -> unary term'
@@ -20,79 +24,92 @@ use super::Location;
     arg-seq   -> value (`,` value)* | epsilon
 */
 
+pub trait PartialAST {
+    fn get_scope(&self) -> i32;
+    fn get_loc(&self) -> Location;
+}
+
 #[derive(Debug, Clone)]
-pub enum ASTKind {
-    Program(Vec<AST>),
-    Func {
-        name: String,
-        params: Vec<AST>,
-        block: Box<AST>,
-    },
-    Block(Vec<AST>),
-    Assign(String, Box<AST>),
-    Return(Box<AST>),
-    Binary(Box<AST>, Box<AST>, OperatorKind),
-    Unary(Box<AST>, OperatorKind),
-    Identifier(String),
+pub struct ASTIdentifier {
+    name: String,
+    scope: i32,
+    location: Location,
+}
+
+impl ASTIdentifier {
+    pub fn new(name: String, scope: i32, loc: Location) -> Self {
+        Self {
+            name,
+            scope,
+            location: loc,
+        }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+}
+
+impl PartialAST for ASTIdentifier {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl std::fmt::Display for ASTIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ASTExprKind {
+    Binary(Box<ASTExpr>, Box<ASTExpr>, OperatorKind),
+    Unary(Box<ASTExpr>, OperatorKind),
+    Identifier(ASTIdentifier),
     Integer(u32),
-    FuncCall {
-        name: String,
-        args: Vec<AST>,
-    },
+    FuncCall(ASTIdentifier, Vec<ASTExpr>),
 }
 
 #[derive(Debug, Clone)]
-pub struct AST {
-    pub kind: ASTKind,
-    pub scope: i32,
-    pub location: Location,
+pub struct ASTExpr {
+    pub kind: ASTExprKind,
+    scope: i32,
+    location: Location,
 }
 
-impl AST {
-    pub fn new(kind: ASTKind, scope: i32, location: Location) -> Self {
+impl ASTExpr {
+    pub fn new(kind: ASTExprKind, scope: i32, loc: Location) -> Self {
         Self {
             kind,
             scope,
-            location,
+            location: loc,
         }
     }
 }
 
-impl std::fmt::Display for AST {
+impl PartialAST for ASTExpr {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl std::fmt::Display for ASTExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.kind.clone() {
-            ASTKind::Program(asts) => {
-                for ast in asts {
-                    println!("{}", ast);
-                }
-                write!(f, "")
-            }
-            ASTKind::Func {
-                name,
-                params,
-                block,
-            } => {
-                let param_string = params
-                    .iter()
-                    .map(|arg| format!("{}", arg))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                write!(f, "{}({}):\n{}", name, param_string, block)
-            }
-            ASTKind::Block(asts) => {
-                for ast in asts {
-                    print!("{}", "  ".repeat(ast.scope as usize));
-                    println!("{}", ast);
-                }
-                write!(f, "")
-            }
-            ASTKind::Return(ast) => write!(f, "return {}", *ast),
-            ASTKind::Assign(id, expr) => write!(f, "{} {} =", id, *expr),
-            ASTKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
-            ASTKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
-            ASTKind::Identifier(name) => write!(f, "{}", name),
-            ASTKind::Integer(n) => write!(f, "{}", n),
-            ASTKind::FuncCall { name, args } => {
+        match &self.kind {
+            ASTExprKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
+            ASTExprKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
+            ASTExprKind::Identifier(name) => write!(f, "{}", name),
+            ASTExprKind::Integer(n) => write!(f, "{}", n),
+            ASTExprKind::FuncCall(name, args) => {
                 let arg_string = args
                     .iter()
                     .map(|arg| format!("{}", arg))
@@ -104,61 +121,161 @@ impl std::fmt::Display for AST {
     }
 }
 
-pub fn visualize_ast(ast: AST) {
-    rec_visualize_ast(ast, 0);
+#[derive(Debug, Clone)]
+pub enum ASTStmtKind {
+    Assign(ASTIdentifier, ASTExpr),
+    Return(ASTExpr),
 }
 
-fn rec_visualize_ast(ast: AST, i: usize) {
+#[derive(Debug, Clone)]
+pub struct ASTStmt {
+    pub kind: ASTStmtKind,
+    scope: i32,
+    location: Location,
+}
+
+impl ASTStmt {
+    pub fn new(kind: ASTStmtKind, scope: i32, loc: Location) -> Self {
+        Self {
+            kind,
+            scope,
+            location: loc,
+        }
+    }
+}
+
+impl PartialAST for ASTStmt {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl std::fmt::Display for ASTStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.kind {
+            ASTStmtKind::Assign(assigned, expr) => write!(f, "{} {} =", assigned, expr),
+            ASTStmtKind::Return(expr) => write!(f, "return {}", expr),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ASTBlockKind {
+    Func(ASTIdentifier, Vec<ASTIdentifier>, Vec<ASTStmt>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ASTBlock {
+    pub kind: ASTBlockKind,
+    scope: i32,
+    location: Location,
+}
+
+impl ASTBlock {
+    pub fn new(kind: ASTBlockKind, scope: i32, loc: Location) -> Self {
+        Self {
+            kind,
+            scope,
+            location: loc,
+        }
+    }
+}
+
+impl PartialAST for ASTBlock {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl std::fmt::Display for ASTBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.kind {
+            ASTBlockKind::Func(id, params, stmts) => {
+                let param_string = params
+                    .iter()
+                    .map(|arg| format!("{}", arg))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                let mut lines = vec![format!("{}({}):\n", id, param_string)];
+                for line in stmts {
+                    lines.push(format!("  {}\n", line));
+                }
+                let func = lines.join("");
+                write!(f, "{}", func)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AST {
+    pub program: Vec<ASTBlock>,
+    pub scope: i32,
+    pub location: Location,
+}
+
+impl AST {
+    pub fn new(program: Vec<ASTBlock>, scope: i32, location: Location) -> Self {
+        Self {
+            program,
+            scope,
+            location,
+        }
+    }
+}
+
+impl PartialAST for AST {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl std::fmt::Display for AST {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let program = self
+            .program
+            .iter()
+            .map(|block| format!("{}", block))
+            .collect::<Vec<String>>()
+            .join("");
+        write!(f, "{}", program)
+    }
+}
+
+pub fn visualize_ast(ast: AST) {
+    println!("Program:");
+    for block in ast.program {
+        visualize_ast_block(block, 1);
+    }
+}
+
+fn visualize_ast_expr(expr: ASTExpr, i: usize) {
     print!("{}", "  ".repeat(i));
-    match ast.kind.clone() {
-        ASTKind::Program(asts) => {
-            println!("Program:");
-            for ast in asts {
-                rec_visualize_ast(ast, i + 1);
-            }
+    match expr.kind {
+        ASTExprKind::Binary(l, r, ope) => {
+            println!("Binary <scope: {}> {}:", expr.scope, ope.to_literal());
+            visualize_ast_expr(*l, i + 1);
+            visualize_ast_expr(*r, i + 1);
         }
-        ASTKind::Func {
-            name,
-            params,
-            block,
-        } => {
-            let param_string = params
-                .iter()
-                .map(|arg| format!("{}", arg))
-                .collect::<Vec<String>>()
-                .join(", ");
-            println!(
-                "Function <scope: {}> {}({}):",
-                ast.scope, name, param_string
-            );
-            rec_visualize_ast(*block, i + 1);
+        ASTExprKind::Unary(factor, ope) => {
+            println!("Unary <scope: {}> {}:", expr.scope, ope.to_literal());
+            visualize_ast_expr(*factor, i + 1);
         }
-        ASTKind::Block(asts) => {
-            println!("Block <scope: {}>:", ast.scope);
-            for ast in asts {
-                rec_visualize_ast(ast, i + 1);
-            }
-        }
-        ASTKind::Return(ast) => {
-            println!("Return <scope: {}>:", ast.scope);
-            rec_visualize_ast(*ast, i + 1);
-        }
-        ASTKind::Assign(name, expr) => {
-            println!("Assign <scope: {}> {}:", ast.scope, name);
-            rec_visualize_ast(*expr, i + 1)
-        }
-        ASTKind::Binary(l, r, ope) => {
-            println!("Binary <scope: {}> {}:", ast.scope, ope.to_literal());
-            rec_visualize_ast(*l, i + 1);
-            rec_visualize_ast(*r, i + 1);
-        }
-        ASTKind::Unary(factor, ope) => {
-            println!("Unary <scope: {}> {}:", ast.scope, ope.to_literal());
-            rec_visualize_ast(*factor, i + 1);
-        }
-        ASTKind::Identifier(name) => println!("Identifier <scope: {}> {},", ast.scope, name),
-        ASTKind::Integer(n) => println!("Integer <scope: {}> {},", ast.scope, n),
-        ASTKind::FuncCall { name, args } => {
+        ASTExprKind::Identifier(id) => println!("Identifier <scope: {}> {},", expr.scope, id),
+        ASTExprKind::Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
+        ASTExprKind::FuncCall(id, args) => {
             let arg_string = args
                 .iter()
                 .map(|arg| format!("{}", arg))
@@ -166,8 +283,42 @@ fn rec_visualize_ast(ast: AST, i: usize) {
                 .join(", ");
             println!(
                 "FunctionCalled <scope: {}> {}({})",
-                ast.scope, name, arg_string
+                expr.scope, id, arg_string
             )
+        }
+    }
+}
+
+fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
+    print!("{}", "  ".repeat(i));
+    match stmt.kind {
+        ASTStmtKind::Assign(assigned, expr) => {
+            println!("Assign <scope: {}> {}:", stmt.scope, assigned);
+            visualize_ast_expr(expr, i + 1);
+        }
+        ASTStmtKind::Return(expr) => {
+            println!("Assign <scope: {}>:", stmt.scope);
+            visualize_ast_expr(expr, i + 1);
+        }
+    }
+}
+
+fn visualize_ast_block(block: ASTBlock, i: usize) {
+    print!("{}", "  ".repeat(i));
+    match block.kind {
+        ASTBlockKind::Func(id, params, stmts) => {
+            let param_string = params
+                .iter()
+                .map(|arg| format!("{}", arg))
+                .collect::<Vec<String>>()
+                .join(", ");
+            println!(
+                "Function <scope: {}> {}({}):",
+                block.scope, id, param_string
+            );
+            for stmt in stmts {
+                visualize_ast_stmt(stmt, i + 1);
+            }
         }
     }
 }

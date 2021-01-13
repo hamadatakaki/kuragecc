@@ -1,4 +1,4 @@
-use super::error::{LexerError, LexerResult};
+use super::error::lexer::{LexerError, LexerResult};
 use super::token::literal::{
     DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
 };
