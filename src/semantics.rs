@@ -50,13 +50,13 @@ impl SemanticAnalyzer {
         stmts: Vec<ASTStmt>,
     ) {
         // 関数名のスコープを記憶
-        let info = IdentifierInformation::new(id.get_name(), params.len(), id.get_scope());
+        let info = IdentifierInformation::new(id, params.len());
         self.func_manager.push_info(info);
 
         // スコープを一段階深くし、関数引数のスコープを記憶
         self.var_manager.deepen_scope();
         for param in params {
-            let info = IdentifierInformation::new(param.get_name(), 0, param.get_scope());
+            let info = IdentifierInformation::new(param, 0);
             self.var_manager.push_info(info);
         }
 
@@ -85,7 +85,7 @@ impl SemanticAnalyzer {
         self.semantic_analyze_expr(expr);
 
         // 新たな変数名を追加
-        let info = IdentifierInformation::new(id.get_name(), 0, id.get_scope());
+        let info = IdentifierInformation::new(id, 0);
         self.var_manager.push_info(info);
     }
 
@@ -105,17 +105,17 @@ impl SemanticAnalyzer {
             ASTExprKind::Integer(_) => {}
             ASTExprKind::Identifier(id) => {
                 // 該当の変数がなければIdentifierIsNotDeclaredを吐く
-                if self.var_manager.search_name(&id.get_name()).is_none() {
+                if self.var_manager.search_name(&id).is_none() {
                     let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
                     let error = SemanticError::new(kind, expr.get_loc());
                     self.errors.push(error)
                 }
             }
             ASTExprKind::FuncCall(id, args) => {
-                match self.func_manager.search_name(&id.get_name()) {
+                match self.func_manager.search_name(&id) {
                     Some(info) => {
                         // 引数の数をチェック
-                        if !info.equal_param_size(args.len()) {
+                        if info.param_size != args.len() {
                             let kind = SemanticErrorKind::DifferentNumbersArgsTaken(
                                 id.get_name(),
                                 args.len(),
