@@ -1,51 +1,4 @@
-use super::symbol::Symbol;
-
-#[derive(Debug, Clone)]
-pub enum ExpressionKind {
-    Value(i32),
-    Symbol(Symbol),
-    // Call(String),
-}
-
-impl ExpressionKind {
-    pub fn to_symbol(&self) -> Option<Symbol> {
-        match self {
-            ExpressionKind::Symbol(sym) => Some(sym.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match self {
-            ExpressionKind::Value(n) => format!("{}", n),
-            ExpressionKind::Symbol(sym) => sym.reveal(),
-            // ExpressionKind::Call(name) => name.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Expression {
-    pub kind: ExpressionKind,
-    code_type: CodeType,
-}
-
-impl Expression {
-    pub fn new(kind: ExpressionKind, code_type: CodeType) -> Self {
-        Self { kind, code_type }
-    }
-    pub fn to_symbol(&self) -> Option<Symbol> {
-        self.kind.to_symbol()
-    }
-
-    pub fn to_string(&self) -> String {
-        self.kind.to_string()
-    }
-
-    pub fn as_func_arg(&self) -> String {
-        format!("{} {}", self.code_type.to_string(), self.to_string())
-    }
-}
+use super::expression::{Expression, Symbol};
 
 #[derive(Debug, Clone)]
 pub enum CodeType {
@@ -62,7 +15,7 @@ impl CodeType {
 
 #[derive(Debug, Clone)]
 pub enum Code {
-    FuncDefineOpen(Expression, Vec<Symbol>),
+    FuncDefineOpen(String, Vec<Symbol>),
     FuncDefineClose,
     Alloca(Expression),
     // (to, stored-value)
@@ -75,30 +28,21 @@ pub enum Code {
     Sub(Expression, Expression, Expression),
     Multi(Expression, Expression, Expression),
     Divide(Expression, Expression, Expression),
-    // function calling: assigned = name(args)
-    FuncCall {
-        name: String,
-        assigned: Expression,
-        args: Vec<Expression>,
-    },
+    // function calling: (name, args, assigned)
+    FuncCall(String, Vec<Expression>, Expression),
 }
 
 impl Code {
     pub fn to_assembly(&self) -> String {
-        // TODO: アセンブリの関数定義・呼び出しにargを適応する実装
         match self {
-            Code::FuncDefineOpen(define_name, params) => {
+            Code::FuncDefineOpen(name, params) => {
                 let param_seq = params
                     .iter()
                     .map(|param| param.as_func_param())
                     .collect::<Vec<String>>()
                     .join(", ");
 
-                format!(
-                    "define i32 @{}({}) {{\n",
-                    define_name.to_string(),
-                    param_seq
-                )
+                format!("define i32 @{}({}) {{\n", name, param_seq)
             }
             Code::FuncDefineClose => format!("}}\n\n"),
             Code::Alloca(expr) => match expr.to_symbol() {
@@ -155,11 +99,7 @@ impl Code {
                     right.to_string()
                 )
             }
-            Code::FuncCall {
-                name,
-                assigned,
-                args,
-            } => {
+            Code::FuncCall(name, args, assigned) => {
                 let assigned = assigned.to_symbol().unwrap().reveal();
                 let arg_seq = args
                     .iter()

@@ -1,33 +1,6 @@
-use super::code::{CodeType, Expression, ExpressionKind};
+use super::expression::Symbol;
+
 use std::collections::HashMap;
-
-#[derive(Debug, Clone)]
-pub struct Symbol {
-    pub name: String,
-    code_type: CodeType,
-}
-
-impl Symbol {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            code_type: CodeType::Int,
-        }
-    }
-
-    pub fn reveal(&self) -> String {
-        self.name.clone()
-    }
-
-    pub fn as_func_param(&self) -> String {
-        self.code_type.to_string()
-    }
-
-    pub fn to_expr(&self) -> Expression {
-        let kind = ExpressionKind::Symbol(self.clone());
-        Expression::new(kind, self.code_type.clone())
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct SymbolTable {
