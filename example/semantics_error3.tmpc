@@ -1,0 +1,7 @@
+func(x) {
+    return x * x;
+}
+
+main() {
+    return func();
+}

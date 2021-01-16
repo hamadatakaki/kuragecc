@@ -1,0 +1,7 @@
+func1 (x, ){
+    return x + y;
+}
+
+main() {
+    return func1(1, 2);
+}
