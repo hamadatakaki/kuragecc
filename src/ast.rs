@@ -21,7 +21,7 @@ use super::Location;
     factor    -> `(` expr `)` | value
     value     -> integer | identifier | call-func
     call-func -> identifier `(` arg-seq `)`
-    arg-seq   -> value (`,` value)* | epsilon
+    arg-seq   -> expr (`,` expr)* | epsilon
 */
 
 pub trait PartialAST {

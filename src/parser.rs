@@ -448,10 +448,10 @@ impl Parser {
     }
 
     fn parse_func_call_args(&mut self) -> ParserResult<Vec<ASTExpr>> {
-        // arg-seq -> value (`,` value)* | epsilon
+        // arg-seq -> expr (`,` expr)* | epsilon
 
         let mut v = vec![];
-        if let Ok(value) = self.parse_value() {
+        if let Ok(value) = self.parse_expr() {
             v.push(value);
             let mut token: Token;
             loop {
@@ -460,7 +460,7 @@ impl Parser {
                     TokenKind::Delimiter(delimiter) if delimiter.is_literal(',') => self.forward(),
                     _ => break,
                 };
-                let value = self.parse_value()?;
+                let value = self.parse_expr()?;
                 v.push(value);
             }
         }

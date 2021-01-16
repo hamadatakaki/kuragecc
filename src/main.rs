@@ -30,16 +30,16 @@ fn main() {
         // "example/parser_error9.tmpc",
         // "example/parser_error10.tmpc",
         // "example/parser_error11.tmpc",
-        "example/parser_error12.tmpc",
-        "example/parser_error13.tmpc",
-        "example/parser_error14.tmpc",
-        "example/parser_error15.tmpc",
-        "example/parser_error16.tmpc",
-        "example/parser_error17.tmpc",
+        // "example/parser_error12.tmpc",
+        // "example/parser_error13.tmpc",
+        // "example/parser_error14.tmpc",
+        // "example/parser_error15.tmpc",
+        // "example/parser_error16.tmpc",
+        // "example/parser_error17.tmpc",
         // "example/semantics_error0.tmpc",
         // "example/semantics_error1.tmpc",
         // "example/semantics_error2.tmpc",
-        "example/semantics_error3.tmpc",
+        // "example/semantics_error3.tmpc",
     ];
     for path in paths {
         println!("=> {}\n", path);
