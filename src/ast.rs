@@ -5,13 +5,16 @@ use super::Location;
     program -> block*
 
     block     -> func
-    func      -> identifier `(` param-seq `)` comp-stmt
-    param-seq -> identifier (`,` identifier)* | epsilon
+    func      -> typed-id `(` param-seq `)` comp-stmt
+    param-seq -> typed-id (`,` typed-id)* | epsilon
     comp-stmt -> `{` stmt* `}`
+    typed-id  -> identifier identifier
 
-    stmt   -> assign | return
-    assign -> identifier `=` expr `;`
-    return -> `return` expr `;`
+    stmt    -> assign | return
+    declare -> typed-id `;`
+    assign  -> identifier `=` expr `;`
+    dec-ass -> typed-id `=` expr `;`
+    return  -> `return` expr `;`
 
     expr      -> term expr'
     expr'     -> (`+`|`-`) term expr' | epsilon
@@ -24,22 +27,43 @@ use super::Location;
     arg-seq   -> expr (`,` expr)* | epsilon
 */
 
-pub trait PartialAST {
-    fn get_scope(&self) -> i32;
-    fn get_loc(&self) -> Location;
+#[derive(Debug, Clone)]
+pub enum PrimitiveType {
+    Int,
+    Void,
+}
+
+#[derive(Debug, Clone)]
+pub struct CustomType {
+    name: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum ValueType {
+    Primitive(PrimitiveType),
+    Custom(CustomType),
+    None,
+}
+
+impl ValueType {
+    pub fn int() -> Self {
+        ValueType::Primitive(PrimitiveType::Int)
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ASTIdentifier {
     name: String,
+    value_type: ValueType,
     scope: i32,
     location: Location,
 }
 
 impl ASTIdentifier {
-    pub fn new(name: String, scope: i32, loc: Location) -> Self {
+    pub fn new(name: String, value_type: ValueType, scope: i32, loc: Location) -> Self {
         Self {
             name,
+            value_type,
             scope,
             location: loc,
         }
@@ -47,22 +71,6 @@ impl ASTIdentifier {
 
     pub fn get_name(&self) -> String {
         self.name.clone()
-    }
-}
-
-impl PartialAST for ASTIdentifier {
-    fn get_scope(&self) -> i32 {
-        self.scope
-    }
-
-    fn get_loc(&self) -> Location {
-        self.location
-    }
-}
-
-impl std::fmt::Display for ASTIdentifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.name)
     }
 }
 
@@ -92,35 +100,6 @@ impl ASTExpr {
     }
 }
 
-impl PartialAST for ASTExpr {
-    fn get_scope(&self) -> i32 {
-        self.scope
-    }
-
-    fn get_loc(&self) -> Location {
-        self.location
-    }
-}
-
-impl std::fmt::Display for ASTExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self.kind {
-            ASTExprKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
-            ASTExprKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
-            ASTExprKind::Identifier(name) => write!(f, "{}", name),
-            ASTExprKind::Integer(n) => write!(f, "{}", n),
-            ASTExprKind::FuncCall(name, args) => {
-                let arg_string = args
-                    .iter()
-                    .map(|arg| format!("{}", arg))
-                    .collect::<Vec<String>>()
-                    .join(", ");
-                write!(f, "{}({})", name, arg_string)
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum ASTStmtKind {
     Assign(ASTIdentifier, ASTExpr),
@@ -140,25 +119,6 @@ impl ASTStmt {
             kind,
             scope,
             location: loc,
-        }
-    }
-}
-
-impl PartialAST for ASTStmt {
-    fn get_scope(&self) -> i32 {
-        self.scope
-    }
-
-    fn get_loc(&self) -> Location {
-        self.location
-    }
-}
-
-impl std::fmt::Display for ASTStmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self.kind {
-            ASTStmtKind::Assign(assigned, expr) => write!(f, "{} {} =", assigned, expr),
-            ASTStmtKind::Return(expr) => write!(f, "return {}", expr),
         }
     }
 }
@@ -185,6 +145,58 @@ impl ASTBlock {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct AST {
+    pub program: Vec<ASTBlock>,
+    pub scope: i32,
+    pub location: Location,
+}
+
+impl AST {
+    pub fn new(program: Vec<ASTBlock>, scope: i32, location: Location) -> Self {
+        Self {
+            program,
+            scope,
+            location,
+        }
+    }
+}
+
+pub trait PartialAST {
+    fn get_scope(&self) -> i32;
+    fn get_loc(&self) -> Location;
+}
+
+impl PartialAST for ASTIdentifier {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl PartialAST for ASTExpr {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl PartialAST for ASTStmt {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
 impl PartialAST for ASTBlock {
     fn get_scope(&self) -> i32 {
         self.scope
@@ -192,6 +204,50 @@ impl PartialAST for ASTBlock {
 
     fn get_loc(&self) -> Location {
         self.location
+    }
+}
+
+impl PartialAST for AST {
+    fn get_scope(&self) -> i32 {
+        self.scope
+    }
+
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl std::fmt::Display for ASTIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl std::fmt::Display for ASTExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.kind {
+            ASTExprKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
+            ASTExprKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
+            ASTExprKind::Identifier(name) => write!(f, "{}", name),
+            ASTExprKind::Integer(n) => write!(f, "{}", n),
+            ASTExprKind::FuncCall(name, args) => {
+                let arg_string = args
+                    .iter()
+                    .map(|arg| format!("{}", arg))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "{}({})", name, arg_string)
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for ASTStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.kind {
+            ASTStmtKind::Assign(assigned, expr) => write!(f, "{} {} =", assigned, expr),
+            ASTStmtKind::Return(expr) => write!(f, "return {}", expr),
+        }
     }
 }
 
@@ -212,33 +268,6 @@ impl std::fmt::Display for ASTBlock {
                 write!(f, "{}", func)
             }
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AST {
-    pub program: Vec<ASTBlock>,
-    pub scope: i32,
-    pub location: Location,
-}
-
-impl AST {
-    pub fn new(program: Vec<ASTBlock>, scope: i32, location: Location) -> Self {
-        Self {
-            program,
-            scope,
-            location,
-        }
-    }
-}
-
-impl PartialAST for AST {
-    fn get_scope(&self) -> i32 {
-        self.scope
-    }
-
-    fn get_loc(&self) -> Location {
-        self.location
     }
 }
 
