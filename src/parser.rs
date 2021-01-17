@@ -1,6 +1,6 @@
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
-    AST,
+    ValueType, AST,
 };
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
@@ -114,7 +114,8 @@ impl Parser {
         match token.kind {
             TokenKind::Identifier(name) => {
                 self.scope += 1;
-                let identifier = ASTIdentifier::new(name, self.scope, token.location);
+                let identifier =
+                    ASTIdentifier::new(name, ValueType::None, self.scope, token.location);
                 params.push(identifier);
                 self.forward();
 
@@ -399,7 +400,12 @@ impl Parser {
     fn parse_identifier(&mut self) -> ParserResult<ASTIdentifier> {
         let token = self.look_and_forward_or_error()?;
         match token.kind {
-            TokenKind::Identifier(name) => Ok(ASTIdentifier::new(name, self.scope, token.location)),
+            TokenKind::Identifier(name) => Ok(ASTIdentifier::new(
+                name,
+                ValueType::None,
+                self.scope,
+                token.location,
+            )),
             _ => {
                 let error = ParserError::expected_token(
                     token.to_string(),
