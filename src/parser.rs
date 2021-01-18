@@ -318,63 +318,6 @@ impl Parser {
         Ok(ASTStmt::new(kind, self.scope, loc))
     }
 
-    // fn parse_declare(&mut self) -> ParserResult<ASTStmt> {
-    //     // declare -> type-id `;`
-
-    //     // type-id の parse
-    //     let id = self.parse_type_id()?;
-
-    //     // semicolon の parse
-    //     let semicolon = self.look_and_forward_or_error()?;
-    //     match semicolon.kind {
-    //         TokenKind::Delimiter(delimiter) if delimiter.is_literal(';') => {}
-    //         _ => {
-    //             let kind = ParserErrorKind::NotEndWithSemicolon;
-    //             let error = ParserError::new(kind, semicolon.location);
-    //             return Err(error);
-    //         }
-    //     }
-
-    //     let loc = id.get_loc().extend_to(semicolon.location);
-    //     let kind = ASTStmtKind::Declare(id);
-    //     Ok(ASTStmt::new(kind, self.scope, loc))
-    // }
-
-    // fn parse_declare_and_assign(&mut self) -> ParserResult<ASTStmt> {
-    //     // dec-ass -> type-id `=` expr `;`
-
-    //     // type-id の parse
-    //     let id = self.parse_type_id()?;
-
-    //     // '=' の parse
-    //     let equal = self.look_and_forward_or_error()?;
-    //     match equal.kind {
-    //         TokenKind::Operator(ope) if ope.is_literal(String::from("=")) => {}
-    //         _ => {
-    //             let kind = ParserErrorKind::AssignHasEqualOnSecondToken(id);
-    //             let error = ParserError::new(kind, equal.location);
-    //             return Err(error);
-    //         }
-    //     }
-
-    //     let expr = self.parse_expr()?;
-
-    //     // semicolon の parse
-    //     let semicolon = self.look_and_forward_or_error()?;
-    //     match semicolon.kind {
-    //         TokenKind::Delimiter(delimiter) if delimiter.is_literal(';') => {}
-    //         _ => {
-    //             let kind = ParserErrorKind::NotEndWithSemicolon;
-    //             let error = ParserError::new(kind, semicolon.location);
-    //             return Err(error);
-    //         }
-    //     }
-
-    //     let loc = id.get_loc().extend_to(semicolon.location);
-    //     let kind = ASTStmtKind::DeclareAssign(id, expr);
-    //     Ok(ASTStmt::new(kind, self.scope, loc))
-    // }
-
     fn parse_return(&mut self) -> ParserResult<ASTStmt> {
         // return -> `return` expr `;`
 
