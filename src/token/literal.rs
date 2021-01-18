@@ -10,6 +10,39 @@ pub trait TerminalSymbol {
 }
 
 #[derive(Debug, Clone)]
+pub enum PrimitiveType {
+    Int,
+    Void,
+}
+
+impl TerminalSymbol for PrimitiveType {
+    type SymbolLiteral = String;
+
+    fn contains(literal: String) -> bool {
+        match literal.as_str() {
+            "int" | "void" => true,
+            _ => false,
+        }
+    }
+
+    fn from_literal(literal: String) -> PrimitiveType {
+        match literal.as_str() {
+            "int" => PrimitiveType::Int,
+            "void" => PrimitiveType::Void,
+            _ => unreachable!(),
+        }
+    }
+
+    fn to_literal(&self) -> String {
+        let s = match self {
+            PrimitiveType::Int => "int",
+            PrimitiveType::Void => "void",
+        };
+        String::from(s)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ReservedLiteral {
     Return,
 }

@@ -1,6 +1,6 @@
 use super::error::lexer::{LexerError, LexerResult};
 use super::token::literal::{
-    DelimiterKind, OperatorKind, ParenKind, ReservedLiteral, TerminalSymbol,
+    DelimiterKind, OperatorKind, ParenKind, PrimitiveType, ReservedLiteral, TerminalSymbol,
 };
 use super::token::{Token, TokenKind};
 use super::{Inspector, Location, Position};
@@ -51,7 +51,7 @@ impl Lexer {
                 self.tokenize_integer();
             } else if looked.is_ascii_alphabetic() {
                 // Reserved or Identifier
-                self.tokenize_symbol();
+                self.tokenize_reserced_of_identifier();
             } else if DelimiterKind::contains(looked) {
                 // Delimiter
                 self.tokenize_delimiter();
@@ -101,7 +101,7 @@ impl Lexer {
         self.tokens.push(token);
     }
 
-    fn tokenize_symbol(&mut self) {
+    fn tokenize_reserced_of_identifier(&mut self) {
         let start = self.position;
         let mut words = vec![];
         while !self.at_end() {
@@ -118,6 +118,8 @@ impl Lexer {
         let s = words.iter().collect::<String>();
         let kind = if ReservedLiteral::contains(s.clone()) {
             TokenKind::Reserved(ReservedLiteral::from_literal(s))
+        } else if PrimitiveType::contains(s.clone()) {
+            TokenKind::Primitive(PrimitiveType::from_literal(s))
         } else {
             TokenKind::Identifier(s)
         };
