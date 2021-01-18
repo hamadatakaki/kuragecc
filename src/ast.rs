@@ -1,4 +1,4 @@
-use super::token::literal::{OperatorKind, TerminalSymbol};
+use super::token::literal::{OperatorKind, PrimitiveType, TerminalSymbol};
 use super::Location;
 
 /*
@@ -28,42 +28,36 @@ use super::Location;
 */
 
 #[derive(Debug, Clone)]
-pub enum PrimitiveType {
-    Int,
-    Void,
-}
-
-#[derive(Debug, Clone)]
 pub struct CustomType {
     name: String,
 }
 
 #[derive(Debug, Clone)]
-pub enum ValueType {
+pub enum IdentifierType {
     Primitive(PrimitiveType),
     Custom(CustomType),
     None,
 }
 
-impl ValueType {
+impl IdentifierType {
     pub fn int() -> Self {
-        ValueType::Primitive(PrimitiveType::Int)
+        IdentifierType::Primitive(PrimitiveType::Int)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ASTIdentifier {
     name: String,
-    value_type: ValueType,
+    id_type: IdentifierType,
     scope: i32,
     location: Location,
 }
 
 impl ASTIdentifier {
-    pub fn new(name: String, value_type: ValueType, scope: i32, loc: Location) -> Self {
+    pub fn new(name: String, id_type: IdentifierType, scope: i32, loc: Location) -> Self {
         Self {
             name,
-            value_type,
+            id_type,
             scope,
             location: loc,
         }
