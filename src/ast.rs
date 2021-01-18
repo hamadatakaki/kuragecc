@@ -5,15 +5,16 @@ use super::Location;
     program -> block*
 
     block     -> func
-    func      -> typed-id `(` param-seq `)` comp-stmt
-    param-seq -> typed-id (`,` typed-id)* | epsilon
+    func      -> type-id `(` param-seq `)` comp-stmt
+    param-seq -> type-id (`,` type-id)* | epsilon
     comp-stmt -> `{` stmt* `}`
-    typed-id  -> identifier identifier
+    type-id   -> type identifier
+    type      -> primitive
 
-    stmt    -> assign | return
-    declare -> typed-id `;`
+    stmt    -> assign | declare | dec-ass | return
     assign  -> identifier `=` expr `;`
-    dec-ass -> typed-id `=` expr `;`
+    declare -> type-id `;`
+    dec-ass -> type-id `=` expr `;`
     return  -> `return` expr `;`
 
     expr      -> term expr'
@@ -45,6 +46,20 @@ impl IdentifierType {
     }
 }
 
+impl std::fmt::Display for IdentifierType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            IdentifierType::Primitive(primitive) => {
+                write!(f, "{}", primitive.to_literal())
+            }
+            IdentifierType::Custom(custom) => {
+                write!(f, "{}", custom.name)
+            }
+            IdentifierType::None => write!(f, "none"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ASTIdentifier {
     name: String,
@@ -65,6 +80,10 @@ impl ASTIdentifier {
 
     pub fn get_name(&self) -> String {
         self.name.clone()
+    }
+
+    pub fn get_type(&self) -> IdentifierType {
+        self.id_type.clone()
     }
 }
 
@@ -97,6 +116,8 @@ impl ASTExpr {
 #[derive(Debug, Clone)]
 pub enum ASTStmtKind {
     Assign(ASTIdentifier, ASTExpr),
+    Declare(ASTIdentifier),
+    DeclareAssign(ASTIdentifier, ASTExpr),
     Return(ASTExpr),
 }
 
@@ -239,7 +260,10 @@ impl std::fmt::Display for ASTExpr {
 impl std::fmt::Display for ASTStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.kind {
-            ASTStmtKind::Assign(assigned, expr) => write!(f, "{} {} =", assigned, expr),
+            ASTStmtKind::Assign(id, expr) | ASTStmtKind::DeclareAssign(id, expr) => {
+                write!(f, "{} {} =", id, expr)
+            }
+            ASTStmtKind::Declare(id) => write!(f, "{}", id),
             ASTStmtKind::Return(expr) => write!(f, "return {}", expr),
         }
     }
@@ -296,7 +320,12 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
             println!("Unary <scope: {}> {}:", expr.scope, ope.to_literal());
             visualize_ast_expr(*factor, i + 1);
         }
-        ASTExprKind::Identifier(id) => println!("Identifier <scope: {}> {},", expr.scope, id),
+        ASTExprKind::Identifier(id) => println!(
+            "Identifier <scope: {}, type: {}> {},",
+            expr.scope,
+            id.get_type(),
+            id
+        ),
         ASTExprKind::Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
         ASTExprKind::FuncCall(id, args) => {
             let arg_string = args
@@ -315,12 +344,29 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
 fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
     print!("{}", "  ".repeat(i));
     match stmt.kind {
-        ASTStmtKind::Assign(assigned, expr) => {
-            println!("Assign <scope: {}> {}:", stmt.scope, assigned);
+        ASTStmtKind::Assign(id, expr) => {
+            println!("Assign <scope: {}> {}:", stmt.scope, id);
+            visualize_ast_expr(expr, i + 1);
+        }
+        ASTStmtKind::Declare(id) => {
+            println!(
+                "Declare <scope: {}, type: {}> {}",
+                stmt.scope,
+                id.get_type(),
+                id
+            );
+        }
+        ASTStmtKind::DeclareAssign(id, expr) => {
+            println!(
+                "DeclareAssign <scope: {}, type: {}> {}:",
+                stmt.scope,
+                id.get_type(),
+                id
+            );
             visualize_ast_expr(expr, i + 1);
         }
         ASTStmtKind::Return(expr) => {
-            println!("Assign <scope: {}>:", stmt.scope);
+            println!("Return <scope: {}>:", stmt.scope);
             visualize_ast_expr(expr, i + 1);
         }
     }
@@ -336,8 +382,11 @@ fn visualize_ast_block(block: ASTBlock, i: usize) {
                 .collect::<Vec<String>>()
                 .join(", ");
             println!(
-                "Function <scope: {}> {}({}):",
-                block.scope, id, param_string
+                "Function <scope: {}, type: {}> {}({}):",
+                block.scope,
+                id.get_type(),
+                id,
+                param_string
             );
             for stmt in stmts {
                 visualize_ast_stmt(stmt, i + 1);

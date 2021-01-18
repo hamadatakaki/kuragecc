@@ -77,6 +77,7 @@ impl SemanticAnalyzer {
         match stmt.kind {
             ASTStmtKind::Assign(id, expr) => self.semantic_analyze_assign(id, expr),
             ASTStmtKind::Return(expr) => self.semantic_analyze_return(expr),
+            _ => unimplemented!(),
         }
     }
 

@@ -76,6 +76,7 @@ impl CodeGenerator {
             match stmt.kind {
                 ASTStmtKind::Assign(id, expr) => self.gen_assign(id, expr),
                 ASTStmtKind::Return(expr) => self.gen_return(expr),
+                _ => unimplemented!(),
             }
         }
     }
