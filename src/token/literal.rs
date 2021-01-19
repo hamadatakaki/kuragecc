@@ -9,7 +9,7 @@ pub trait TerminalSymbol {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PrimitiveType {
     Int,
     Void,

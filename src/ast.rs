@@ -28,34 +28,36 @@ use super::Location;
     arg-seq   -> expr (`,` expr)* | epsilon
 */
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CustomType {
     name: String,
 }
 
-#[derive(Debug, Clone)]
-pub enum IdentifierType {
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValueType {
     Primitive(PrimitiveType),
     Custom(CustomType),
+    InvalidTypeError,
     None,
 }
 
-impl IdentifierType {
+impl ValueType {
     pub fn int() -> Self {
-        IdentifierType::Primitive(PrimitiveType::Int)
+        ValueType::Primitive(PrimitiveType::Int)
     }
 }
 
-impl std::fmt::Display for IdentifierType {
+impl std::fmt::Display for ValueType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            IdentifierType::Primitive(primitive) => {
+            ValueType::Primitive(primitive) => {
                 write!(f, "{}", primitive.to_literal())
             }
-            IdentifierType::Custom(custom) => {
+            ValueType::Custom(custom) => {
                 write!(f, "{}", custom.name)
             }
-            IdentifierType::None => write!(f, "none"),
+            ValueType::InvalidTypeError => write!(f, "<invalid-type-error-occured>"),
+            ValueType::None => write!(f, "<none>"),
         }
     }
 }
@@ -63,13 +65,13 @@ impl std::fmt::Display for IdentifierType {
 #[derive(Debug, Clone)]
 pub struct ASTIdentifier {
     name: String,
-    id_type: IdentifierType,
+    id_type: ValueType,
     scope: i32,
     location: Location,
 }
 
 impl ASTIdentifier {
-    pub fn new(name: String, id_type: IdentifierType, scope: i32, loc: Location) -> Self {
+    pub fn new(name: String, id_type: ValueType, scope: i32, loc: Location) -> Self {
         Self {
             name,
             id_type,
@@ -82,7 +84,7 @@ impl ASTIdentifier {
         self.name.clone()
     }
 
-    pub fn get_type(&self) -> IdentifierType {
+    pub fn get_type(&self) -> ValueType {
         self.id_type.clone()
     }
 }
@@ -99,17 +101,23 @@ pub enum ASTExprKind {
 #[derive(Debug, Clone)]
 pub struct ASTExpr {
     pub kind: ASTExprKind,
+    expr_type: ValueType,
     scope: i32,
     location: Location,
 }
 
 impl ASTExpr {
-    pub fn new(kind: ASTExprKind, scope: i32, loc: Location) -> Self {
+    pub fn new(kind: ASTExprKind, expr_type: ValueType, scope: i32, loc: Location) -> Self {
         Self {
             kind,
+            expr_type,
             scope,
             location: loc,
         }
+    }
+
+    pub fn get_type(&self) -> ValueType {
+        self.expr_type.clone()
     }
 }
 

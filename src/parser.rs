@@ -1,6 +1,6 @@
 use super::ast::{
-    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
-    IdentifierType, PartialAST, AST,
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
+    ValueType, AST,
 };
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
@@ -198,13 +198,13 @@ impl Parser {
         Ok(id)
     }
 
-    fn parse_type(&mut self) -> ParserResult<(IdentifierType, Location)> {
+    fn parse_type(&mut self) -> ParserResult<(ValueType, Location)> {
         // type -> primitive
         let token = self.look_and_forward_or_error()?;
         let loc = token.location;
         match token.kind {
             TokenKind::Primitive(primitive) => {
-                let ty = IdentifierType::Primitive(primitive);
+                let ty = ValueType::Primitive(primitive);
                 Ok((ty, loc))
             }
             _ => {
@@ -356,9 +356,16 @@ impl Parser {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_addition() => {
                 self.forward();
                 let term = self.parse_term()?;
+
+                let ty = if expr_left.get_type() == term.get_type() {
+                    expr_left.get_type()
+                } else {
+                    ValueType::InvalidTypeError
+                };
                 let loc = expr_left.get_loc().extend_to(term.get_loc());
                 let kind = ASTExprKind::Binary(Box::new(expr_left), Box::new(term), ope_kind);
-                let expr = ASTExpr::new(kind, self.scope, loc);
+                let expr = ASTExpr::new(kind, ty, self.scope, loc);
+
                 self.parse_expr_prime(expr)
             }
             _ => Ok(expr_left),
@@ -378,9 +385,16 @@ impl Parser {
             TokenKind::Operator(ope_kind) if ope_kind.priority().is_multiplication() => {
                 self.forward();
                 let unary = self.parse_unary()?;
+
+                let ty = if term_left.get_type() == unary.get_type() {
+                    term_left.get_type()
+                } else {
+                    ValueType::InvalidTypeError
+                };
                 let loc = term_left.get_loc().extend_to(unary.get_loc());
                 let kind = ASTExprKind::Binary(Box::new(term_left), Box::new(unary), ope_kind);
-                let term = ASTExpr::new(kind, self.scope, loc);
+                let term = ASTExpr::new(kind, ty, self.scope, loc);
+
                 self.parse_term_prime(term)
             }
             _ => Ok(term_left),
@@ -401,8 +415,9 @@ impl Parser {
         match ope {
             Some(OperatorKind::Minus) => {
                 let loc = token.location.extend_to(factor.get_loc());
+                let ty = factor.get_type();
                 let kind = ASTExprKind::Unary(Box::new(factor), OperatorKind::Minus);
-                Ok(ASTExpr::new(kind, self.scope, loc))
+                Ok(ASTExpr::new(kind, ty, self.scope, loc))
             }
             _ => Ok(factor),
         }
@@ -459,7 +474,12 @@ impl Parser {
         match token.kind {
             TokenKind::Integer(n) => {
                 let kind = ASTExprKind::Integer(n);
-                Ok(ASTExpr::new(kind, self.scope, token.location))
+                Ok(ASTExpr::new(
+                    kind,
+                    ValueType::int(),
+                    self.scope,
+                    token.location,
+                ))
             }
             _ => {
                 let error = ParserError::expected_token(
@@ -477,7 +497,7 @@ impl Parser {
         match token.kind {
             TokenKind::Identifier(name) => Ok(ASTIdentifier::new(
                 name,
-                IdentifierType::None,
+                ValueType::None,
                 self.scope,
                 token.location,
             )),
@@ -501,7 +521,7 @@ impl Parser {
             TokenKind::Paren(paren) if paren.is_literal('(') => {}
             _ => {
                 let kind = ASTExprKind::Identifier(id.clone());
-                return Ok(ASTExpr::new(kind, self.scope, id.get_loc()));
+                return Ok(ASTExpr::new(kind, id.get_type(), self.scope, id.get_loc()));
             }
         }
 
@@ -524,8 +544,9 @@ impl Parser {
         };
 
         let loc = id.get_loc().extend_to(normal_close.location);
+        let ty = id.get_type();
         let kind = ASTExprKind::FuncCall(id, args);
-        Ok(ASTExpr::new(kind, self.scope, loc))
+        Ok(ASTExpr::new(kind, ty, self.scope, loc))
     }
 
     fn parse_func_call_args(&mut self) -> ParserResult<Vec<ASTExpr>> {
