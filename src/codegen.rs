@@ -76,8 +76,9 @@ impl CodeGenerator {
         for stmt in stmts {
             match stmt.kind {
                 ASTStmtKind::Assign(id, expr) => self.gen_assign(id, expr),
+                ASTStmtKind::Declare(id) => self.gen_declare(id),
+                ASTStmtKind::DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
                 ASTStmtKind::Return(expr) => self.gen_return(expr),
-                _ => unimplemented!(),
             }
         }
     }
@@ -103,6 +104,14 @@ impl CodeGenerator {
                 self.table.overwrite_name_and_symbol(id.get_name(), symbol)
             }
         }
+    }
+
+    fn gen_declare(&mut self, _id: ASTIdentifier) {
+        // 何もしない
+    }
+
+    fn gen_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
+        self.gen_assign(id, expr)
     }
 
     fn gen_return(&mut self, expr: ASTExpr) {

@@ -61,7 +61,7 @@ impl SemanticAnalyzer {
         }
 
         // 関数定義内の解析
-        self.semantic_analyze_comp_stmts(stmts);
+        self.semantic_analyze_comp_stmts(stmts.clone());
 
         // 関数のスコープから抜ける処理
         self.var_manager.shallow_scope();
