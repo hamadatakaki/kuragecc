@@ -8,7 +8,7 @@ use super::ast::{
 };
 use super::token::literal::OperatorKind;
 use code::Code;
-use expression::{CodeExpression, Expression, ExpressionKind, Symbol, Value, ValueKind};
+use expression::{Expression, ExpressionKind, Symbol, Value, ValueKind};
 use symbol_table::SymbolTable;
 
 pub struct CodeGenerator {
@@ -51,19 +51,18 @@ impl CodeGenerator {
     }
 
     fn gen_func(&mut self, id: ASTIdentifier, params: Vec<ASTIdentifier>, stmts: Vec<ASTStmt>) {
-        let sym = Symbol::from_identifier(id);
+        let func = Symbol::from_identifier(id);
 
-        let mut syms = Vec::new();
+        let mut types = Vec::new();
         for param in params.clone() {
-            let sym = Symbol::new(param.get_name());
-            syms.push(sym);
+            types.push(param.get_type());
         }
-        self.codes.push(Code::FuncDefineOpen(sym, syms.clone()));
+        self.codes.push(Code::FuncDefineOpen(func, types.clone()));
 
-        for (index, sym) in syms.iter().enumerate() {
+        for (index, param) in params.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index)).to_expr();
             let ano = self.table.anonymous_symbol();
-            let symbol = self.table.register_name(sym.as_code());
+            let symbol = self.table.register_name(param.get_name());
             self.codes.push(Code::Alloca(ano.clone()));
             self.codes.push(Code::Store(ano.clone(), arg));
             self.codes.push(Code::Load(ano, symbol));

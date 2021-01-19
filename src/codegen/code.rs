@@ -1,8 +1,9 @@
+use super::super::ast::types::Type;
 use super::expression::{CodeExpression, Expression, Symbol};
 
 #[derive(Debug, Clone)]
 pub enum Code {
-    FuncDefineOpen(Symbol, Vec<Symbol>),
+    FuncDefineOpen(Symbol, Vec<Type>),
     FuncDefineClose,
     Alloca(Symbol),
     // (to, stored-value)
@@ -25,7 +26,7 @@ impl Code {
             Code::FuncDefineOpen(sym, params) => {
                 let param_seq = params
                     .iter()
-                    .map(|param| param.get_type().as_code())
+                    .map(|ty| ty.as_code())
                     .collect::<Vec<String>>()
                     .join(", ");
 
