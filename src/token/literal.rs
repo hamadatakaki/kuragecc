@@ -15,6 +15,16 @@ pub enum PrimitiveType {
     Void,
 }
 
+impl PrimitiveType {
+    pub fn as_code(&self) -> String {
+        let s = match self {
+            PrimitiveType::Int => "i32",
+            PrimitiveType::Void => unimplemented!(),
+        };
+        String::from(s)
+    }
+}
+
 impl TerminalSymbol for PrimitiveType {
     type SymbolLiteral = String;
 

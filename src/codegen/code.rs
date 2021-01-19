@@ -25,82 +25,104 @@ impl Code {
             Code::FuncDefineOpen(sym, params) => {
                 let param_seq = params
                     .iter()
-                    .map(|param| param.get_type().to_string())
+                    .map(|param| param.get_type().as_code())
                     .collect::<Vec<String>>()
                     .join(", ");
 
-                format!("define i32 @{}({}) {{\n", sym.to_string(), param_seq)
+                format!(
+                    "define {} @{}({}) {{\n",
+                    sym.get_type().as_code(),
+                    sym.as_code(),
+                    param_seq
+                )
             }
             Code::FuncDefineClose => format!("}}\n\n"),
             Code::Alloca(expr) => match expr.to_symbol() {
                 Some(sym) => {
-                    format!("  {} = alloca i32\n", sym.to_string())
+                    format!(
+                        "  {} = alloca {}\n",
+                        sym.as_code(),
+                        sym.get_type().as_code()
+                    )
                 }
                 None => unreachable!(),
             },
             Code::Store(expr, value) => match expr.to_symbol() {
                 Some(sym) => {
                     format!(
-                        "  store i32 {}, i32* {}\n",
-                        value.to_string(),
-                        sym.to_string()
+                        "  store {} {}, {}* {}\n",
+                        value.get_type().as_code(),
+                        value.as_code(),
+                        sym.get_type().as_code(),
+                        sym.as_code()
                     )
                 }
                 None => unreachable!(),
             },
             Code::Load(from, to) => {
-                let from = from.to_string();
-                let to = to.to_string();
-                format!("  {} = load i32, i32* {}\n", to, from)
-            }
-            Code::Return(expr) => format!("  ret i32 {}\n", expr.to_string()),
-            Code::Add(left, right, ans) => {
-                let ans = ans.to_string();
                 format!(
-                    "  {} = add i32 {}, {}\n",
+                    "  {} = load {}, {}* {}\n",
+                    to.as_code(),
+                    to.get_type().as_code(),
+                    from.get_type().as_code(),
+                    from.as_code()
+                )
+            }
+            Code::Return(expr) => {
+                format!("  ret {} {}\n", expr.get_type().as_code(), expr.as_code())
+            }
+            Code::Add(left, right, ans) => {
+                let ans = ans.as_code();
+                format!(
+                    "  {} = add {} {}, {}\n",
                     ans,
-                    left.to_string(),
-                    right.to_string()
+                    left.get_type().as_code(),
+                    left.as_code(),
+                    right.as_code()
                 )
             }
             Code::Sub(left, right, ans) => {
-                let ans = ans.to_string();
+                let ans = ans.as_code();
                 format!(
-                    "  {} = sub i32 {}, {}\n",
+                    "  {} = sub {} {}, {}\n",
                     ans,
-                    left.to_string(),
-                    right.to_string()
+                    left.get_type().as_code(),
+                    left.as_code(),
+                    right.as_code()
                 )
             }
             Code::Multi(left, right, ans) => {
-                let ans = ans.to_string();
+                let ans = ans.as_code();
                 format!(
-                    "  {} = mul i32 {}, {}\n",
+                    "  {} = mul {} {}, {}\n",
                     ans,
-                    left.to_string(),
-                    right.to_string()
+                    left.get_type().as_code(),
+                    left.as_code(),
+                    right.as_code()
                 )
             }
             Code::Divide(left, right, ans) => {
-                let ans = ans.to_string();
+                let ans = ans.as_code();
                 format!(
-                    "  {} = sdiv i32 {}, {}\n",
+                    "  {} = sdiv {} {}, {}\n",
                     ans,
-                    left.to_string(),
-                    right.to_string()
+                    left.get_type().as_code(),
+                    left.as_code(),
+                    right.as_code()
                 )
             }
             Code::FuncCall(sym, args, assigned) => {
-                let assigned = assigned.to_symbol().unwrap().to_string();
+                let assigned = assigned.to_symbol().unwrap().as_code();
                 let arg_seq = args
                     .iter()
                     .map(|param| param.as_func_arg())
                     .collect::<Vec<String>>()
                     .join(", ");
                 format!(
-                    "  {} = call i32 @{}({})\n",
+                    "  {} = call {} @{}({})\n",
                     assigned,
-                    sym.to_string(),
+                    sym.get_type().as_code(),
+                    sym.as_code(),
                     arg_seq
                 )
             }

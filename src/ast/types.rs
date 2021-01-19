@@ -17,6 +17,13 @@ impl Type {
     pub fn int() -> Self {
         Type::Primitive(PrimitiveType::Int)
     }
+
+    pub fn as_code(&self) -> String {
+        match self {
+            Type::Primitive(prime) => prime.as_code(),
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl std::fmt::Display for Type {

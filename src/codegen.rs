@@ -63,7 +63,7 @@ impl CodeGenerator {
         for (index, sym) in syms.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index)).to_expr();
             let ano = self.table.anonymous_symbol().to_expr();
-            let symbol = self.table.register_name(sym.to_string()).to_expr();
+            let symbol = self.table.register_name(sym.as_code()).to_expr();
             self.codes.push(Code::Alloca(ano.clone()));
             self.codes.push(Code::Store(ano.clone(), arg));
             self.codes.push(Code::Load(ano, symbol));

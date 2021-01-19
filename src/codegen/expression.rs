@@ -56,15 +56,6 @@ pub enum ExpressionKind {
     Symbol(Symbol),
 }
 
-impl ExpressionKind {
-    pub fn to_string(&self) -> String {
-        match self {
-            ExpressionKind::Value(kind) => kind.to_string(),
-            ExpressionKind::Symbol(sym) => sym.to_string(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Expression {
     pub kind: ExpressionKind,
@@ -84,17 +75,17 @@ impl Expression {
     }
 
     pub fn as_func_arg(&self) -> String {
-        format!("{} {}", self.code_type.to_string(), self.to_string())
+        format!("{} {}", self.code_type.as_code(), self.as_code())
     }
 }
 
 pub trait CodeExpression {
-    fn to_string(&self) -> String;
+    fn as_code(&self) -> String;
     fn get_type(&self) -> Type;
 }
 
 impl CodeExpression for Value {
-    fn to_string(&self) -> String {
+    fn as_code(&self) -> String {
         match self.kind {
             ValueKind::Int(n) => format!("{}", n),
         }
@@ -106,7 +97,7 @@ impl CodeExpression for Value {
 }
 
 impl CodeExpression for Symbol {
-    fn to_string(&self) -> String {
+    fn as_code(&self) -> String {
         self.name.clone()
     }
 
@@ -116,8 +107,11 @@ impl CodeExpression for Symbol {
 }
 
 impl CodeExpression for Expression {
-    fn to_string(&self) -> String {
-        self.kind.to_string()
+    fn as_code(&self) -> String {
+        match &self.kind {
+            ExpressionKind::Value(kind) => kind.as_code(),
+            ExpressionKind::Symbol(sym) => sym.as_code(),
+        }
     }
 
     fn get_type(&self) -> Type {
