@@ -1,19 +1,6 @@
 use super::expression::{CodeExpression, Expression, Symbol};
 
 #[derive(Debug, Clone)]
-pub enum CodeType {
-    Int,
-}
-
-impl CodeType {
-    pub fn to_string(&self) -> String {
-        match self {
-            CodeType::Int => format!("i32"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub enum Code {
     FuncDefineOpen(Symbol, Vec<Symbol>),
     FuncDefineClose,
@@ -38,7 +25,7 @@ impl Code {
             Code::FuncDefineOpen(sym, params) => {
                 let param_seq = params
                     .iter()
-                    .map(|param| param.as_func_param())
+                    .map(|param| param.get_type().to_string())
                     .collect::<Vec<String>>()
                     .join(", ");
 

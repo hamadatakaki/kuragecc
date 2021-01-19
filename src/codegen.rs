@@ -3,10 +3,10 @@ pub mod expression;
 pub mod symbol_table;
 
 use super::ast::{
-    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, AST,
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, Type, AST,
 };
 use super::token::literal::OperatorKind;
-use code::{Code, CodeType};
+use code::Code;
 use expression::{CodeExpression, Expression, ExpressionKind, Symbol, Value, ValueKind};
 use symbol_table::SymbolTable;
 
@@ -96,7 +96,7 @@ impl CodeGenerator {
                 let symbol = self.table.register_name(id.get_name()).to_expr();
                 self.codes.push(Code::Alloca(ano.clone()));
                 let kind = ExpressionKind::Value(n);
-                let expr = Expression::new(kind, CodeType::Int);
+                let expr = Expression::new(kind, Type::int());
                 self.codes.push(Code::Store(ano.clone(), expr));
                 self.codes.push(Code::Load(ano, symbol));
             }

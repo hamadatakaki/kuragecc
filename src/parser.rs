@@ -1,6 +1,6 @@
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
-    ValueType, AST,
+    Type, AST,
 };
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
@@ -198,13 +198,13 @@ impl Parser {
         Ok(id)
     }
 
-    fn parse_type(&mut self) -> ParserResult<(ValueType, Location)> {
+    fn parse_type(&mut self) -> ParserResult<(Type, Location)> {
         // type -> primitive
         let token = self.look_and_forward_or_error()?;
         let loc = token.location;
         match token.kind {
             TokenKind::Primitive(primitive) => {
-                let ty = ValueType::Primitive(primitive);
+                let ty = Type::Primitive(primitive);
                 Ok((ty, loc))
             }
             _ => {
@@ -360,7 +360,7 @@ impl Parser {
                 let ty = if expr_left.get_type() == term.get_type() {
                     expr_left.get_type()
                 } else {
-                    ValueType::InvalidTypeError
+                    Type::InvalidTypeError
                 };
                 let loc = expr_left.get_loc().extend_to(term.get_loc());
                 let kind = ASTExprKind::Binary(Box::new(expr_left), Box::new(term), ope_kind);
@@ -389,7 +389,7 @@ impl Parser {
                 let ty = if term_left.get_type() == unary.get_type() {
                     term_left.get_type()
                 } else {
-                    ValueType::InvalidTypeError
+                    Type::InvalidTypeError
                 };
                 let loc = term_left.get_loc().extend_to(unary.get_loc());
                 let kind = ASTExprKind::Binary(Box::new(term_left), Box::new(unary), ope_kind);
@@ -476,7 +476,7 @@ impl Parser {
                 let kind = ASTExprKind::Integer(n);
                 Ok(ASTExpr::new(
                     kind,
-                    ValueType::int(),
+                    Type::int(),
                     self.scope,
                     token.location,
                 ))
@@ -497,7 +497,7 @@ impl Parser {
         match token.kind {
             TokenKind::Identifier(name) => Ok(ASTIdentifier::new(
                 name,
-                ValueType::None,
+                Type::None,
                 self.scope,
                 token.location,
             )),
