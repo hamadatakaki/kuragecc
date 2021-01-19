@@ -4,19 +4,19 @@ use super::expression::{CodeExpression, Expression, Symbol};
 pub enum Code {
     FuncDefineOpen(Symbol, Vec<Symbol>),
     FuncDefineClose,
-    Alloca(Expression),
+    Alloca(Symbol),
     // (to, stored-value)
-    Store(Expression, Expression),
+    Store(Symbol, Expression),
     // (from, to)
-    Load(Expression, Expression),
+    Load(Symbol, Symbol),
     Return(Expression),
     // binary operations: (left, right, ans)
-    Add(Expression, Expression, Expression),
-    Sub(Expression, Expression, Expression),
-    Multi(Expression, Expression, Expression),
-    Divide(Expression, Expression, Expression),
+    Add(Expression, Expression, Symbol),
+    Sub(Expression, Expression, Symbol),
+    Multi(Expression, Expression, Symbol),
+    Divide(Expression, Expression, Symbol),
     // function calling: (sym, args, assigned)
-    FuncCall(Symbol, Vec<Expression>, Expression),
+    FuncCall(Symbol, Vec<Expression>, Symbol),
 }
 
 impl Code {
@@ -37,28 +37,18 @@ impl Code {
                 )
             }
             Code::FuncDefineClose => format!("}}\n\n"),
-            Code::Alloca(expr) => match expr.to_symbol() {
-                Some(sym) => {
-                    format!(
-                        "  {} = alloca {}\n",
-                        sym.as_code(),
-                        sym.get_type().as_code()
-                    )
-                }
-                None => unreachable!(),
-            },
-            Code::Store(expr, value) => match expr.to_symbol() {
-                Some(sym) => {
-                    format!(
-                        "  store {} {}, {}* {}\n",
-                        value.get_type().as_code(),
-                        value.as_code(),
-                        sym.get_type().as_code(),
-                        sym.as_code()
-                    )
-                }
-                None => unreachable!(),
-            },
+            Code::Alloca(sym) => format!(
+                "  {} = alloca {}\n",
+                sym.as_code(),
+                sym.get_type().as_code()
+            ),
+            Code::Store(sym, value) => format!(
+                "  store {} {}, {}* {}\n",
+                value.get_type().as_code(),
+                value.as_code(),
+                sym.get_type().as_code(),
+                sym.as_code()
+            ),
             Code::Load(from, to) => {
                 format!(
                     "  {} = load {}, {}* {}\n",
@@ -112,7 +102,7 @@ impl Code {
                 )
             }
             Code::FuncCall(sym, args, assigned) => {
-                let assigned = assigned.to_symbol().unwrap().as_code();
+                let assigned = assigned.as_code();
                 let arg_seq = args
                     .iter()
                     .map(|param| param.as_func_arg())
