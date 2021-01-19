@@ -7,7 +7,7 @@ use super::ast::{
 };
 use super::token::literal::OperatorKind;
 use code::{Code, CodeType};
-use expression::{Expression, ExpressionKind, Symbol, Value, ValueKind};
+use expression::{CodeExpression, Expression, ExpressionKind, Symbol, Value, ValueKind};
 use symbol_table::SymbolTable;
 
 pub struct CodeGenerator {
@@ -50,18 +50,19 @@ impl CodeGenerator {
     }
 
     fn gen_func(&mut self, id: ASTIdentifier, params: Vec<ASTIdentifier>, stmts: Vec<ASTStmt>) {
+        let sym = Symbol::from_identifier(id);
+
         let mut syms = Vec::new();
         for param in params.clone() {
             let sym = Symbol::new(param.get_name());
             syms.push(sym);
         }
-        self.codes
-            .push(Code::FuncDefineOpen(id.get_name(), syms.clone()));
+        self.codes.push(Code::FuncDefineOpen(sym, syms.clone()));
 
         for (index, sym) in syms.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index)).to_expr();
             let ano = self.table.anonymous_symbol().to_expr();
-            let symbol = self.table.register_name(sym.reveal()).to_expr();
+            let symbol = self.table.register_name(sym.to_string()).to_expr();
             self.codes.push(Code::Alloca(ano.clone()));
             self.codes.push(Code::Store(ano.clone(), arg));
             self.codes.push(Code::Load(ano, symbol));
@@ -131,15 +132,16 @@ impl CodeGenerator {
                 None => unreachable!(),
             },
             ASTExprKind::FuncCall(id, args) => {
-                let mut syms = Vec::new();
+                let sym = Symbol::from_identifier(id);
 
+                let mut syms = Vec::new();
                 for arg in args {
                     let expr = self.gen_expr(arg);
                     syms.push(expr);
                 }
 
                 let assigned = self.table.anonymous_symbol().to_expr();
-                let code = Code::FuncCall(id.get_name(), syms, assigned.clone());
+                let code = Code::FuncCall(sym, syms, assigned.clone());
                 self.codes.push(code);
                 assigned
             }

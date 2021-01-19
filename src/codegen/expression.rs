@@ -1,4 +1,10 @@
+use super::super::ast::ASTIdentifier;
 use super::code::CodeType;
+
+pub trait CodeExpression {
+    fn to_string(&self) -> String;
+    fn get_type(&self) -> CodeType;
+}
 
 #[derive(Debug, Clone)]
 pub enum ValueKind {
@@ -19,15 +25,21 @@ impl Value {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn to_expr(&self) -> Expression {
+        let kind = ExpressionKind::Value(self.clone());
+        Expression::new(kind, self.code_type.clone())
+    }
+}
+
+impl CodeExpression for Value {
+    fn to_string(&self) -> String {
         match self.kind {
             ValueKind::Int(n) => format!("{}", n),
         }
     }
 
-    pub fn to_expr(&self) -> Expression {
-        let kind = ExpressionKind::Value(self.clone());
-        Expression::new(kind, self.code_type.clone())
+    fn get_type(&self) -> CodeType {
+        self.code_type.clone()
     }
 }
 
@@ -41,12 +53,8 @@ impl Symbol {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            code_type: CodeType::Int,
+            code_type: CodeType::Int, // TODO: CodeType を引数で指定できるようにする
         }
-    }
-
-    pub fn reveal(&self) -> String {
-        self.name.clone()
     }
 
     pub fn as_func_param(&self) -> String {
@@ -56,6 +64,20 @@ impl Symbol {
     pub fn to_expr(&self) -> Expression {
         let kind = ExpressionKind::Symbol(self.clone());
         Expression::new(kind, self.code_type.clone())
+    }
+
+    pub fn from_identifier(id: ASTIdentifier) -> Self {
+        Self::new(id.get_name())
+    }
+}
+
+impl CodeExpression for Symbol {
+    fn to_string(&self) -> String {
+        self.name.clone()
+    }
+
+    fn get_type(&self) -> CodeType {
+        self.code_type.clone()
     }
 }
 
@@ -69,7 +91,7 @@ impl ExpressionKind {
     pub fn to_string(&self) -> String {
         match self {
             ExpressionKind::Value(kind) => kind.to_string(),
-            ExpressionKind::Symbol(sym) => sym.reveal(),
+            ExpressionKind::Symbol(sym) => sym.to_string(),
         }
     }
 }
@@ -92,11 +114,17 @@ impl Expression {
         }
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn as_func_arg(&self) -> String {
+        format!("{} {}", self.code_type.to_string(), self.to_string())
+    }
+}
+
+impl CodeExpression for Expression {
+    fn to_string(&self) -> String {
         self.kind.to_string()
     }
 
-    pub fn as_func_arg(&self) -> String {
-        format!("{} {}", self.code_type.to_string(), self.to_string())
+    fn get_type(&self) -> CodeType {
+        self.code_type.clone()
     }
 }

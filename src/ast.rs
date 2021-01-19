@@ -316,6 +316,16 @@ pub fn visualize_ast(ast: AST) {
     }
 }
 
+fn visualize_ast_identifier(id: ASTIdentifier, i: usize) {
+    print!("{}", "  ".repeat(i));
+    println!(
+        "Identifier <scope: {}, type: {}> {},",
+        id.scope,
+        id.get_type(),
+        id
+    )
+}
+
 fn visualize_ast_expr(expr: ASTExpr, i: usize) {
     print!("{}", "  ".repeat(i));
     match expr.kind {
@@ -330,21 +340,16 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
         }
         ASTExprKind::Identifier(id) => println!(
             "Identifier <scope: {}, type: {}> {},",
-            expr.scope,
+            id.scope,
             id.get_type(),
             id
         ),
         ASTExprKind::Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
         ASTExprKind::FuncCall(id, args) => {
-            let arg_string = args
-                .iter()
-                .map(|arg| format!("{}", arg))
-                .collect::<Vec<String>>()
-                .join(", ");
-            println!(
-                "FunctionCalled <scope: {}> {}({})",
-                expr.scope, id, arg_string
-            )
+            println!("FunctionCalled <scope: {}> {}:", expr.scope, id);
+            for arg in args {
+                visualize_ast_expr(arg, i + 1);
+            }
         }
     }
 }
@@ -353,24 +358,17 @@ fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
     print!("{}", "  ".repeat(i));
     match stmt.kind {
         ASTStmtKind::Assign(id, expr) => {
-            println!("Assign <scope: {}> {}:", stmt.scope, id);
+            println!("Assign <scope: {}>:", stmt.scope);
+            visualize_ast_identifier(id, i + 1);
             visualize_ast_expr(expr, i + 1);
         }
         ASTStmtKind::Declare(id) => {
-            println!(
-                "Declare <scope: {}, type: {}> {}",
-                stmt.scope,
-                id.get_type(),
-                id
-            );
+            println!("Declare <scope: {}>:", stmt.scope);
+            visualize_ast_identifier(id, i + 1);
         }
         ASTStmtKind::DeclareAssign(id, expr) => {
-            println!(
-                "DeclareAssign <scope: {}, type: {}> {}:",
-                stmt.scope,
-                id.get_type(),
-                id
-            );
+            println!("DeclareAssign <scope: {}>:", stmt.scope);
+            visualize_ast_identifier(id, i + 1);
             visualize_ast_expr(expr, i + 1);
         }
         ASTStmtKind::Return(expr) => {
