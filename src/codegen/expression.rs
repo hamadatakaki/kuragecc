@@ -13,11 +13,8 @@ pub struct Value {
 }
 
 impl Value {
-    pub fn new(kind: ValueKind) -> Self {
-        Self {
-            kind,
-            code_type: Type::int(),
-        }
+    pub fn new(kind: ValueKind, code_type: Type) -> Self {
+        Self { kind, code_type }
     }
 
     pub fn to_expr(&self) -> Expression {
@@ -33,11 +30,8 @@ pub struct Symbol {
 }
 
 impl Symbol {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            code_type: Type::int(), // TODO: CodeType を引数で指定できるようにする
-        }
+    pub fn new(name: String, code_type: Type) -> Self {
+        Self { name, code_type }
     }
 
     pub fn to_expr(&self) -> Expression {
@@ -46,7 +40,7 @@ impl Symbol {
     }
 
     pub fn from_identifier(id: ASTIdentifier) -> Self {
-        Self::new(id.get_name())
+        Self::new(id.get_name(), id.get_type())
     }
 }
 

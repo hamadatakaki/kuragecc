@@ -8,13 +8,14 @@ use super::ast::{
 };
 use super::token::literal::OperatorKind;
 use code::Code;
-use expression::{Expression, ExpressionKind, Symbol, Value, ValueKind};
-use symbol_table::SymbolTable;
+use expression::{CodeExpression, Expression, ExpressionKind, Symbol, Value, ValueKind};
+use symbol_table::{FunctionTable, SymbolTable};
 
 pub struct CodeGenerator {
     ast: AST,
     codes: Vec<Code>,
-    table: SymbolTable,
+    symbol_table: SymbolTable,
+    func_table: FunctionTable,
 }
 
 impl CodeGenerator {
@@ -22,7 +23,8 @@ impl CodeGenerator {
         Self {
             ast,
             codes: Vec::new(),
-            table: SymbolTable::new(),
+            symbol_table: SymbolTable::new(),
+            func_table: FunctionTable::new(),
         }
     }
 
@@ -35,6 +37,11 @@ impl CodeGenerator {
 
     pub fn gen_code(&mut self) -> String {
         self.gen_program(self.ast.clone());
+
+        for code in self.codes.clone() {
+            println!("{:?}", code);
+        }
+
         self.code()
     }
 
@@ -51,7 +58,7 @@ impl CodeGenerator {
     }
 
     fn gen_func(&mut self, id: ASTIdentifier, params: Vec<ASTIdentifier>, stmts: Vec<ASTStmt>) {
-        let func = Symbol::from_identifier(id);
+        let func = self.func_table.register_func(id.get_name(), id.get_type());
 
         let mut types = Vec::new();
         for param in params.clone() {
@@ -60,9 +67,9 @@ impl CodeGenerator {
         self.codes.push(Code::FuncDefineOpen(func, types.clone()));
 
         for (index, param) in params.iter().enumerate() {
-            let arg = Symbol::new(format!("%{}", index)).to_expr();
-            let ano = self.table.anonymous_symbol();
-            let symbol = self.table.register_name(param.get_name());
+            let arg = Symbol::new(format!("%{}", index), param.get_type()).to_expr();
+            let ano = self.symbol_table.anonymous_symbol(param.get_type());
+            let symbol = self.symbol_table.register_id(param.clone());
             self.codes.push(Code::Alloca(ano.clone()));
             self.codes.push(Code::Store(ano.clone(), arg));
             self.codes.push(Code::Load(ano, symbol));
@@ -83,6 +90,33 @@ impl CodeGenerator {
         }
     }
 
+    fn gen_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
+        // Alloca(<name1>)
+        // Store(<name1>, <integer>)
+        // Load(<name1>, <name2>)
+
+        let expr = self.gen_expr(expr);
+
+        match expr.clone().kind {
+            ExpressionKind::Value(val) => {
+                let ano = self.symbol_table.anonymous_symbol(val.get_type());
+                let symbol = self.symbol_table.register_id(id);
+                self.codes.push(Code::Alloca(ano.clone()));
+                // let kind = ExpressionKind::Value(val);
+                // let expr = Expression::new(kind, Type::int());
+                self.codes.push(Code::Store(ano.clone(), expr));
+                self.codes.push(Code::Load(ano, symbol));
+            }
+            ExpressionKind::Symbol(symbol) => self
+                .symbol_table
+                .overwrite_name_and_symbol(id.get_name(), symbol),
+        }
+    }
+
+    fn gen_declare(&mut self, id: ASTIdentifier) {
+        self.symbol_table.register_id(id);
+    }
+
     fn gen_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // Alloca(<name1>)
         // Store(<name1>, <integer>)
@@ -90,28 +124,20 @@ impl CodeGenerator {
 
         let expr = self.gen_expr(expr);
 
-        match expr.kind {
-            ExpressionKind::Value(n) => {
-                let ano = self.table.anonymous_symbol();
-                let symbol = self.table.register_name(id.get_name());
+        match expr.clone().kind {
+            ExpressionKind::Value(val) => {
+                let ano = self.symbol_table.anonymous_symbol(val.get_type());
+                let symbol = self.symbol_table.get_symbol(&id.get_name()).unwrap();
                 self.codes.push(Code::Alloca(ano.clone()));
-                let kind = ExpressionKind::Value(n);
-                let expr = Expression::new(kind, Type::int());
+                // let kind = ExpressionKind::Value(val);
+                // let expr = Expression::new(kind, Type::int());
                 self.codes.push(Code::Store(ano.clone(), expr));
                 self.codes.push(Code::Load(ano, symbol));
             }
-            ExpressionKind::Symbol(symbol) => {
-                self.table.overwrite_name_and_symbol(id.get_name(), symbol)
-            }
+            ExpressionKind::Symbol(symbol) => self
+                .symbol_table
+                .overwrite_name_and_symbol(id.get_name(), symbol),
         }
-    }
-
-    fn gen_declare(&mut self, _id: ASTIdentifier) {
-        // 何もしない
-    }
-
-    fn gen_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
-        self.gen_assign(id, expr)
     }
 
     fn gen_return(&mut self, expr: ASTExpr) {
@@ -123,7 +149,7 @@ impl CodeGenerator {
     }
 
     fn gen_identifier(&mut self, id: ASTIdentifier) -> Expression {
-        match self.table.get_symbol(&id.get_name()) {
+        match self.symbol_table.get_symbol(&id.get_name()) {
             Some(sym) => sym.to_expr(),
             None => unreachable!(),
         }
@@ -133,12 +159,12 @@ impl CodeGenerator {
         match expr.kind {
             ASTExprKind::Integer(n) => {
                 let kind = ValueKind::Int(n as i32);
-                let value = Value::new(kind);
+                let value = Value::new(kind, Type::int());
                 value.to_expr()
             }
             ASTExprKind::Identifier(id) => self.gen_identifier(id),
             ASTExprKind::FuncCall(id, args) => {
-                let sym = Symbol::from_identifier(id);
+                let sym = self.func_table.get_symbol(&id.get_name()).unwrap();
 
                 let mut syms = Vec::new();
                 for arg in args {
@@ -146,7 +172,7 @@ impl CodeGenerator {
                     syms.push(expr);
                 }
 
-                let assigned = self.table.anonymous_symbol();
+                let assigned = self.symbol_table.anonymous_symbol(sym.get_type());
                 let code = Code::FuncCall(sym, syms, assigned.clone());
                 self.codes.push(code);
                 assigned.to_expr()
@@ -154,7 +180,8 @@ impl CodeGenerator {
             ASTExprKind::Binary(left, right, ope) => {
                 let l = self.gen_expr(*left);
                 let r = self.gen_expr(*right);
-                let ans = self.table.anonymous_symbol();
+                let ty = l.get_type();
+                let ans = self.symbol_table.anonymous_symbol(ty);
                 let code = match ope {
                     OperatorKind::Plus => Code::Add(l, r, ans.clone()),
                     OperatorKind::Minus => Code::Sub(l, r, ans.clone()),
@@ -173,15 +200,15 @@ impl CodeGenerator {
                             let kind = match val.kind {
                                 ValueKind::Int(n) => ValueKind::Int(-n),
                             };
-                            let value = Value::new(kind);
+                            let value = Value::new(kind, val.get_type());
                             value.to_expr()
                         }
                         ExpressionKind::Symbol(sym) => {
-                            let ans = self.table.anonymous_symbol();
+                            let ans = self.symbol_table.anonymous_symbol(sym.get_type());
                             let l = sym.to_expr();
                             let r = {
                                 let kind = ValueKind::Int(-1);
-                                let value = Value::new(kind);
+                                let value = Value::new(kind, Type::int());
                                 value.to_expr()
                             };
                             let code = Code::Multi(l, r, ans.clone());

@@ -21,7 +21,7 @@ impl Type {
     pub fn as_code(&self) -> String {
         match self {
             Type::Primitive(prime) => prime.as_code(),
-            _ => unreachable!(),
+            _ => unimplemented!(),
         }
     }
 }
