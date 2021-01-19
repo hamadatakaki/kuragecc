@@ -44,6 +44,20 @@ impl IdentifierManager {
 
     pub fn push_info(&mut self, info: IdentifierInformation) {
         self.info_stack.push(info);
+
+        match std::env::var("RUST_BACKTRACE") {
+            Ok(s) if s.as_str() == "ID" => {
+                print!("info: ");
+                let s = self
+                    .info_stack
+                    .iter()
+                    .map(|info| info.id.get_name())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                println!("{}", s);
+            }
+            _ => {}
+        }
     }
 
     pub fn deepen_scope(&mut self) {

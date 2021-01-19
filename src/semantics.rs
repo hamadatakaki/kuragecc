@@ -76,12 +76,33 @@ impl SemanticAnalyzer {
     fn semantic_analyze_stmt(&mut self, stmt: ASTStmt) {
         match stmt.kind {
             ASTStmtKind::Assign(id, expr) => self.semantic_analyze_assign(id, expr),
+            ASTStmtKind::Declare(id) => self.semantic_analyze_declare(id),
+            ASTStmtKind::DeclareAssign(id, expr) => {
+                self.semantic_analyze_declare_and_assign(id, expr)
+            }
             ASTStmtKind::Return(expr) => self.semantic_analyze_return(expr),
-            _ => unimplemented!(),
         }
     }
 
     fn semantic_analyze_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
+        // exprを解析
+        self.semantic_analyze_expr(expr);
+
+        // 該当の変数がなければIdentifierIsNotDeclaredを吐く
+        if self.var_manager.search_name(&id).is_none() {
+            let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
+            let error = SemanticError::new(kind, id.get_loc());
+            self.errors.push(error)
+        }
+    }
+
+    fn semantic_analyze_declare(&mut self, id: ASTIdentifier) {
+        // 新たな変数名を追加
+        let info = IdentifierInformation::new(id, 0);
+        self.var_manager.push_info(info);
+    }
+
+    fn semantic_analyze_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // exprを解析
         self.semantic_analyze_expr(expr);
 
