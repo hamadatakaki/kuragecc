@@ -4,14 +4,20 @@ use super::expression::Symbol;
 
 use std::collections::HashMap;
 
+pub trait SymbolicTable {
+    type Item;
+    fn search_symbol(&self, name: &String) -> Option<Self::Item>;
+    fn register(&mut self, id: ASTIdentifier) -> Self::Item;
+}
+
 #[derive(Debug, Clone)]
-pub struct SymbolTable {
+pub struct VariableTable {
     val_count: usize,
     ano_count: usize,
     base: HashMap<String, Symbol>,
 }
 
-impl SymbolTable {
+impl VariableTable {
     pub fn new() -> Self {
         Self {
             val_count: 0,
@@ -28,31 +34,26 @@ impl SymbolTable {
 
     pub fn anonymous_symbol(&mut self, ty: Type) -> Symbol {
         self.ano_count += 1;
-        let sym = format!("%ano_{}", self.ano_count);
-
-        match ty {
-            Type::None => {
-                println!("{}", sym);
-            }
-            _ => {}
-        }
-
-        Symbol::new(sym, ty)
-    }
-
-    pub fn get_symbol(&mut self, name: &String) -> Option<Symbol> {
-        self.base.get(name).map(|sym| sym.clone())
-    }
-
-    pub fn register_id(&mut self, id: ASTIdentifier) -> Symbol {
-        let name = id.get_name();
-        let sym = self.variable_symbol(name.as_str(), id.get_type());
-        self.base.insert(name, sym.clone());
-        sym
+        Symbol::new(format!("%ano_{}", self.ano_count), ty)
     }
 
     pub fn overwrite_name_and_symbol(&mut self, name: String, sym: Symbol) {
         self.base.insert(name, sym);
+    }
+}
+
+impl SymbolicTable for VariableTable {
+    type Item = Symbol;
+
+    fn search_symbol(&self, name: &String) -> Option<Symbol> {
+        self.base.get(name).map(|sym| sym.clone())
+    }
+
+    fn register(&mut self, id: ASTIdentifier) -> Symbol {
+        let name = id.get_name();
+        let sym = self.variable_symbol(name.as_str(), id.get_type());
+        self.base.insert(name, sym.clone());
+        sym
     }
 }
 
@@ -66,14 +67,18 @@ impl FunctionTable {
             base: HashMap::new(),
         }
     }
+}
 
-    pub fn register_func(&mut self, name: String, ty: Type) -> Symbol {
-        let sym = Symbol::new(name.clone(), ty);
-        self.base.insert(name, sym.clone());
-        sym
+impl SymbolicTable for FunctionTable {
+    type Item = Symbol;
+
+    fn search_symbol(&self, name: &String) -> Option<Symbol> {
+        self.base.get(name).map(|sym| sym.clone())
     }
 
-    pub fn get_symbol(&mut self, name: &String) -> Option<Symbol> {
-        self.base.get(name).map(|sym| sym.clone())
+    fn register(&mut self, id: ASTIdentifier) -> Symbol {
+        let sym = Symbol::from_identifier(id.clone());
+        self.base.insert(id.get_name(), sym.clone());
+        sym
     }
 }

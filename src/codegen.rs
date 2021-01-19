@@ -9,12 +9,12 @@ use super::ast::{
 use super::token::literal::OperatorKind;
 use code::Code;
 use expression::{CodeExpression, Expression, ExpressionKind, Symbol, Value, ValueKind};
-use symbol_table::{FunctionTable, SymbolTable};
+use symbol_table::{FunctionTable, SymbolicTable, VariableTable};
 
 pub struct CodeGenerator {
     ast: AST,
     codes: Vec<Code>,
-    symbol_table: SymbolTable,
+    symbol_table: VariableTable,
     func_table: FunctionTable,
 }
 
@@ -23,7 +23,7 @@ impl CodeGenerator {
         Self {
             ast,
             codes: Vec::new(),
-            symbol_table: SymbolTable::new(),
+            symbol_table: VariableTable::new(),
             func_table: FunctionTable::new(),
         }
     }
@@ -37,11 +37,6 @@ impl CodeGenerator {
 
     pub fn gen_code(&mut self) -> String {
         self.gen_program(self.ast.clone());
-
-        for code in self.codes.clone() {
-            println!("{:?}", code);
-        }
-
         self.code()
     }
 
@@ -58,7 +53,7 @@ impl CodeGenerator {
     }
 
     fn gen_func(&mut self, id: ASTIdentifier, params: Vec<ASTIdentifier>, stmts: Vec<ASTStmt>) {
-        let func = self.func_table.register_func(id.get_name(), id.get_type());
+        let func = self.func_table.register(id);
 
         let mut types = Vec::new();
         for param in params.clone() {
@@ -69,7 +64,7 @@ impl CodeGenerator {
         for (index, param) in params.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index), param.get_type()).to_expr();
             let ano = self.symbol_table.anonymous_symbol(param.get_type());
-            let symbol = self.symbol_table.register_id(param.clone());
+            let symbol = self.symbol_table.register(param.clone());
             self.codes.push(Code::Alloca(ano.clone()));
             self.codes.push(Code::Store(ano.clone(), arg));
             self.codes.push(Code::Load(ano, symbol));
@@ -100,10 +95,8 @@ impl CodeGenerator {
         match expr.clone().kind {
             ExpressionKind::Value(val) => {
                 let ano = self.symbol_table.anonymous_symbol(val.get_type());
-                let symbol = self.symbol_table.register_id(id);
+                let symbol = self.symbol_table.register(id);
                 self.codes.push(Code::Alloca(ano.clone()));
-                // let kind = ExpressionKind::Value(val);
-                // let expr = Expression::new(kind, Type::int());
                 self.codes.push(Code::Store(ano.clone(), expr));
                 self.codes.push(Code::Load(ano, symbol));
             }
@@ -114,7 +107,7 @@ impl CodeGenerator {
     }
 
     fn gen_declare(&mut self, id: ASTIdentifier) {
-        self.symbol_table.register_id(id);
+        self.symbol_table.register(id);
     }
 
     fn gen_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
@@ -127,10 +120,8 @@ impl CodeGenerator {
         match expr.clone().kind {
             ExpressionKind::Value(val) => {
                 let ano = self.symbol_table.anonymous_symbol(val.get_type());
-                let symbol = self.symbol_table.get_symbol(&id.get_name()).unwrap();
+                let symbol = self.symbol_table.search_symbol(&id.get_name()).unwrap();
                 self.codes.push(Code::Alloca(ano.clone()));
-                // let kind = ExpressionKind::Value(val);
-                // let expr = Expression::new(kind, Type::int());
                 self.codes.push(Code::Store(ano.clone(), expr));
                 self.codes.push(Code::Load(ano, symbol));
             }
@@ -149,7 +140,7 @@ impl CodeGenerator {
     }
 
     fn gen_identifier(&mut self, id: ASTIdentifier) -> Expression {
-        match self.symbol_table.get_symbol(&id.get_name()) {
+        match self.symbol_table.search_symbol(&id.get_name()) {
             Some(sym) => sym.to_expr(),
             None => unreachable!(),
         }
@@ -164,7 +155,7 @@ impl CodeGenerator {
             }
             ASTExprKind::Identifier(id) => self.gen_identifier(id),
             ASTExprKind::FuncCall(id, args) => {
-                let sym = self.func_table.get_symbol(&id.get_name()).unwrap();
+                let sym = self.func_table.search_symbol(&id.get_name()).unwrap();
 
                 let mut syms = Vec::new();
                 for arg in args {

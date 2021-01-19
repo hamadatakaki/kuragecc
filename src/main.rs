@@ -105,13 +105,6 @@ fn compile(path: &str) {
         _ => {}
     }
 
-    if std::env::var("RUST_BACKTRACE").is_ok() {
-        println!("After analyzing semantics >>>\n");
-
-        visualize_ast(ast.clone());
-        println!();
-    }
-
     // Code Generator
     let mut generator = CodeGenerator::new(ast);
     let code = generator.gen_code();
