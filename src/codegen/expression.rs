@@ -1,4 +1,5 @@
-use super::super::ast::{ASTIdentifier, Type};
+use super::super::ast::types::Type;
+use super::super::ast::ASTIdentifier;
 
 #[derive(Debug, Clone)]
 pub enum ValueKind {

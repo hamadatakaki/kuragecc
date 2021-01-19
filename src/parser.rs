@@ -1,6 +1,7 @@
+use super::ast::types::Type;
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
-    Type, AST,
+    AST,
 };
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
@@ -474,12 +475,7 @@ impl Parser {
         match token.kind {
             TokenKind::Integer(n) => {
                 let kind = ASTExprKind::Integer(n);
-                Ok(ASTExpr::new(
-                    kind,
-                    Type::int(),
-                    self.scope,
-                    token.location,
-                ))
+                Ok(ASTExpr::new(kind, Type::int(), self.scope, token.location))
             }
             _ => {
                 let error = ParserError::expected_token(

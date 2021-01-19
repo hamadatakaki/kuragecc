@@ -2,8 +2,9 @@ pub mod code;
 pub mod expression;
 pub mod symbol_table;
 
+use super::ast::types::Type;
 use super::ast::{
-    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, Type, AST,
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, AST,
 };
 use super::token::literal::OperatorKind;
 use code::Code;
