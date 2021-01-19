@@ -1,10 +1,10 @@
-int func(int x) {
-    int y = 42;
-    return x * y;
+int func(int x, int y, int z) {
+    int a = 42;
+    return a * x + y * z;
 }
 
 int main() {
     int c;
     c = 2;
-    return func(c);
+    return func(c, 2, 4);
 }
