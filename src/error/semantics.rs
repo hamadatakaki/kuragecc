@@ -1,3 +1,4 @@
+use super::super::ast::types::Type;
 use super::super::Location;
 use super::{CompileTimeError, HasReason, VisualizeError};
 
@@ -10,6 +11,7 @@ pub enum SemanticErrorKind {
     IdentifierIsNotDeclared(String),
     FunctionIsNotDefined(String),
     DifferentNumbersArgsTaken(String, usize, usize),
+    TypesAreDifferent(Type, Type),
 }
 
 impl HasReason for SemanticErrorKind {
@@ -32,6 +34,12 @@ impl HasReason for SemanticErrorKind {
                 format!(
                     "Function `{}` expected to be taken {} arg{}, but given {} arg{}.",
                     name, expected, s_expected, actual, s_actual
+                )
+            }
+            TypesAreDifferent(actual, expected) => {
+                format!(
+                    "Type `{}` is expected, but actually `{}` is appeared.",
+                    expected, actual
                 )
             }
         }

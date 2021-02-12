@@ -28,31 +28,33 @@ impl CodeGenerator {
         }
     }
 
-    pub fn code(&self) -> String {
+    pub fn gen_code(&mut self) -> String {
+        self.gen_program(self.ast.clone());
         self.codes
             .iter()
             .map(|code| code.to_assembly())
             .collect::<String>()
     }
 
-    pub fn gen_code(&mut self) -> String {
-        self.gen_program(self.ast.clone());
-        self.code()
-    }
-
     fn gen_program(&mut self, ast: AST) {
+        // program -> block*
+
         for block in ast.program {
             self.gen_block(block);
         }
     }
 
     fn gen_block(&mut self, block: ASTBlock) {
+        // block -> func
+
         match block.kind {
             ASTBlockKind::Func(id, params, stmts) => self.gen_func(id, params, stmts),
         }
     }
 
     fn gen_func(&mut self, id: ASTIdentifier, params: Vec<ASTIdentifier>, stmts: Vec<ASTStmt>) {
+        // func -> def-open, stmts, def-close
+
         let func = self.func_table.register(id);
 
         let mut types = Vec::new();
@@ -70,11 +72,14 @@ impl CodeGenerator {
             self.codes.push(Code::Load(ano, symbol));
         }
 
-        self.gen_comp_stmts(stmts);
+        self.gen_stmts(stmts);
         self.codes.push(Code::FuncDefineClose);
     }
 
-    fn gen_comp_stmts(&mut self, stmts: Vec<ASTStmt>) {
+    fn gen_stmts(&mut self, stmts: Vec<ASTStmt>) {
+        // stmts -> stmt*
+        // stmt -> assign | declare | dec-ass | return
+
         for stmt in stmts {
             use ASTStmtKind::*;
 
@@ -173,15 +178,18 @@ impl CodeGenerator {
                 assigned.to_expr()
             }
             Binary(left, right, ope) => {
+                use Code::*;
+                use OperatorKind::*;
+
                 let l = self.gen_expr(*left);
                 let r = self.gen_expr(*right);
                 let ty = l.get_type();
                 let ans = self.symbol_table.anonymous_symbol(ty);
                 let code = match ope {
-                    OperatorKind::Plus => Code::Add(l, r, ans.clone()),
-                    OperatorKind::Minus => Code::Sub(l, r, ans.clone()),
-                    OperatorKind::Times => Code::Multi(l, r, ans.clone()),
-                    OperatorKind::Devide => Code::Divide(l, r, ans.clone()),
+                    Plus => Add(l, r, ans.clone()),
+                    Minus => Sub(l, r, ans.clone()),
+                    Times => Multi(l, r, ans.clone()),
+                    Devide => Divide(l, r, ans.clone()),
                     _ => unreachable!(),
                 };
                 self.codes.push(code);

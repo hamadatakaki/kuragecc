@@ -104,7 +104,16 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // exprを解析
-        self.semantic_analyze_expr(expr);
+        self.semantic_analyze_expr(expr.clone());
+
+        // type-check
+        let id_type = id.get_type();
+        let expr_type = expr.get_type();
+        if id_type != expr_type {
+            let kind = SemanticErrorKind::TypesAreDifferent(id_type, expr_type);
+            let error = SemanticError::new(kind, id.get_loc());
+            self.errors.push(error)
+        }
 
         // 新たな変数名を追加
         let info = IdentifierInformation::new(id, 0);
