@@ -382,32 +382,20 @@ impl Parser {
             }
         }
 
-        let mut t_stmts = vec![];
-        let mut f_stmts = vec![];
-
         let token = self.look_or_error()?;
-        match token.clone().kind {
-            TokenKind::Paren(paren) if paren.is_literal('{') => {
-                println!("a: {}", token);
-                t_stmts = self.parse_comp_stmt()?;
-            }
-            _ => {
-                println!("b: {}", token);
-                t_stmts.push(self.parse_stmt()?);
-            }
-        }
+        let t_stmts = match token.clone().kind {
+            TokenKind::Paren(paren) if paren.is_literal('{') => self.parse_comp_stmt()?,
+            _ => vec![self.parse_stmt()?],
+        };
 
         let res_else = self.look_or_error()?;
-        println!("{:?}", t_stmts);
 
         match res_else.kind {
             // `else` なら forward だけして pass
-            TokenKind::Reserved(res) if res.is_literal(format!("else")) => {
-                self.forward();
-            }
+            TokenKind::Reserved(res) if res.is_literal(format!("else")) => self.forward(),
             _ => {
-                // `else` じゃなければ else は empty
-                let kind = ASTStmtKind::If(cond, t_stmts, f_stmts);
+                // `else` じゃなければ f_stmts は empty
+                let kind = ASTStmtKind::If(cond, t_stmts, vec![]);
                 let end_loc = self.look_prev().unwrap().location;
                 let loc = res_if.location.extend_to(end_loc);
                 return Ok(ASTStmt::new(kind, self.scope, loc));
@@ -415,14 +403,10 @@ impl Parser {
         }
 
         let token = self.look_or_error()?;
-        match token.kind {
-            TokenKind::Paren(paren) if paren.is_literal('{') => {
-                f_stmts = self.parse_comp_stmt()?;
-            }
-            _ => {
-                f_stmts.push(self.parse_stmt()?);
-            }
-        }
+        let f_stmts = match token.clone().kind {
+            TokenKind::Paren(paren) if paren.is_literal('{') => self.parse_comp_stmt()?,
+            _ => vec![self.parse_stmt()?],
+        };
 
         let kind = ASTStmtKind::If(cond, t_stmts, f_stmts);
         let end_loc = self.look_prev().unwrap().location;
