@@ -1,3 +1,4 @@
+use super::super::ast::types::Type;
 use super::super::ast::ASTIdentifier;
 
 #[derive(Debug, Clone)]
@@ -13,6 +14,10 @@ impl IdentifierInformation {
 
     pub fn has_same_name(&self, name: &String) -> bool {
         self.id.get_name() == name.clone()
+    }
+
+    pub fn get_type(&self) -> Type {
+        self.id.get_type()
     }
 }
 

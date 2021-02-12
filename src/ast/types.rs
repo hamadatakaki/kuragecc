@@ -9,7 +9,7 @@ pub struct CustomType {
 pub enum Type {
     Primitive(PrimitiveType),
     Custom(CustomType),
-    InvalidTypeError,
+    // InvalidTypeError,
     None,
 }
 
@@ -25,19 +25,19 @@ impl Type {
         }
     }
 
-    fn invalid(&self) -> bool {
-        match self {
-            Type::InvalidTypeError => true,
-            _ => false,
-        }
-    }
+    // fn invalid(&self) -> bool {
+    //     match self {
+    //         Type::InvalidTypeError => true,
+    //         _ => false,
+    //     }
+    // }
 }
 
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {
-        if self.invalid() || other.invalid() {
-            return false;
-        }
+        // if self.invalid() || other.invalid() {
+        //     return false;
+        // }
 
         use Type::*;
 

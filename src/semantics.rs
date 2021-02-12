@@ -106,11 +106,10 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // exprを解析
-        self.semantic_analyze_expr(expr.clone());
+        let expr_type = self.semantic_analyze_expr(expr.clone());
 
         // type-check
         let id_type = id.get_type();
-        let expr_type = expr.get_type();
         if id_type != expr_type {
             let kind = SemanticErrorKind::TypesAreDifferent(id_type, expr_type);
             let error = SemanticError::new(kind, id.get_loc());
@@ -123,11 +122,11 @@ impl SemanticAnalyzer {
     }
 
     fn semantic_analyze_return(&mut self, expr: ASTExpr) {
-        self.semantic_analyze_expr(expr)
+        self.semantic_analyze_expr(expr);
     }
 
     fn semantic_analyze_if(&mut self, cond: ASTExpr, t_stmts: Vec<ASTStmt>, f_stmts: Vec<ASTStmt>) {
-        let cond_type = cond.get_type();
+        let cond_type = self.semantic_analyze_expr(cond.clone());
         // cond の型は int であるべき.
         if cond_type != Type::int() {
             let kind = SemanticErrorKind::TypesAreDifferent(cond_type, Type::int());
@@ -139,27 +138,40 @@ impl SemanticAnalyzer {
         self.semantic_analyze_comp_stmts(f_stmts);
     }
 
-    fn semantic_analyze_expr(&mut self, expr: ASTExpr) {
+    fn semantic_analyze_expr(&mut self, expr: ASTExpr) -> Type {
         use ASTExprKind::*;
 
         match expr.clone().kind {
             Binary(left, right, _) => {
-                self.semantic_analyze_expr(*left);
-                self.semantic_analyze_expr(*right);
+                // TODO: ope の type check
+                let left_type = self.semantic_analyze_expr(*left);
+                let right_type = self.semantic_analyze_expr(*right);
+                if left_type != right_type {
+                    // type error !
+                    unimplemented!()
+                }
+                left_type
             }
             Unary(factor, _) => {
-                self.semantic_analyze_expr(*factor);
+                // TODO: ope の type check
+                self.semantic_analyze_expr(*factor)
             }
-            Integer(_) => {}
+            Integer(_) => Type::int(),
             Identifier(id) => {
                 // 該当の変数がなければIdentifierIsNotDeclaredを吐く
-                if self.var_manager.search_name(&id).is_none() {
-                    let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
-                    let error = SemanticError::new(kind, expr.get_loc());
-                    self.errors.push(error)
+                let search_result = self.var_manager.search_name(&id);
+                match search_result {
+                    None => {
+                        let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
+                        let error = SemanticError::new(kind, expr.get_loc());
+                        self.errors.push(error);
+                        Type::None
+                    }
+                    Some(info) => info.get_type(),
                 }
             }
             FuncCall(id, args) => {
+                // TODO: 引数型の type check
                 match self.func_manager.search_name(&id) {
                     Some(info) => {
                         // 引数の数をチェック
@@ -170,13 +182,15 @@ impl SemanticAnalyzer {
                                 info.param_size,
                             );
                             let error = SemanticError::new(kind, expr.get_loc());
-                            self.errors.push(error)
+                            self.errors.push(error);
                         }
+                        info.get_type()
                     }
                     None => {
                         let kind = SemanticErrorKind::FunctionIsNotDefined(id.get_name());
                         let error = SemanticError::new(kind, expr.get_loc());
-                        self.errors.push(error)
+                        self.errors.push(error);
+                        Type::None
                     }
                 }
             }

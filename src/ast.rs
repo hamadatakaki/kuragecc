@@ -71,23 +71,17 @@ pub enum ASTExprKind {
 #[derive(Debug, Clone)]
 pub struct ASTExpr {
     pub kind: ASTExprKind,
-    expr_type: Type,
     scope: i32,
     location: Location,
 }
 
 impl ASTExpr {
-    pub fn new(kind: ASTExprKind, expr_type: Type, scope: i32, loc: Location) -> Self {
+    pub fn new(kind: ASTExprKind, scope: i32, loc: Location) -> Self {
         Self {
             kind,
-            expr_type,
             scope,
             location: loc,
         }
-    }
-
-    pub fn get_type(&self) -> Type {
-        self.expr_type.clone()
     }
 }
 
@@ -311,12 +305,7 @@ pub fn visualize_ast(ast: AST) {
 
 fn visualize_ast_identifier(id: ASTIdentifier, i: usize) {
     print!("{}", "  ".repeat(i));
-    println!(
-        "Identifier <scope: {}, type: {}> {},",
-        id.scope,
-        id.get_type(),
-        id
-    )
+    println!("Identifier <scope: {}> {},", id.scope, id)
 }
 
 fn visualize_ast_expr(expr: ASTExpr, i: usize) {
@@ -334,12 +323,7 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
             println!("Unary <scope: {}> {}:", expr.scope, ope.to_literal());
             visualize_ast_expr(*factor, i + 1);
         }
-        Identifier(id) => println!(
-            "Identifier <scope: {}, type: {}> {},",
-            id.scope,
-            id.get_type(),
-            id
-        ),
+        Identifier(id) => println!("Identifier <scope: {}> {},", id.scope, id),
         Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
         FuncCall(id, args) => {
             println!("FunctionCalled <scope: {}> {}:", expr.scope, id);
@@ -400,11 +384,8 @@ fn visualize_ast_block(block: ASTBlock, i: usize) {
                 .collect::<Vec<String>>()
                 .join(", ");
             println!(
-                "Function <scope: {}, type: {}> {}({}):",
-                block.scope,
-                id.get_type(),
-                id,
-                param_string
+                "Function <scope: {}> {}({}):",
+                block.scope, id, param_string
             );
             for stmt in stmts {
                 visualize_ast_stmt(stmt, i + 1);
