@@ -1,0 +1,19 @@
+int main() {
+    int c = 1;
+
+    if (c)
+        c = 8;
+
+    if (c - 7) {
+        c = 1;
+    }
+
+    if (c) {} else 
+        int d = 4;
+
+    if (c) {
+        return 42;
+    } else {
+        return 0;
+    }
+}

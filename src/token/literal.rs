@@ -61,6 +61,8 @@ impl TerminalSymbol for PrimitiveType {
 #[derive(Debug, Clone)]
 pub enum ReservedLiteral {
     Return,
+    If,
+    Else,
 }
 
 impl TerminalSymbol for ReservedLiteral {
@@ -68,7 +70,7 @@ impl TerminalSymbol for ReservedLiteral {
 
     fn contains(literal: String) -> bool {
         match literal.as_str() {
-            "return" => true,
+            "return" | "if" | "else" => true,
             _ => false,
         }
     }
@@ -76,6 +78,8 @@ impl TerminalSymbol for ReservedLiteral {
     fn from_literal(literal: String) -> ReservedLiteral {
         match literal.as_str() {
             "return" => ReservedLiteral::Return,
+            "if" => ReservedLiteral::If,
+            "else" => ReservedLiteral::Else,
             _ => unreachable!(),
         }
     }
@@ -83,6 +87,8 @@ impl TerminalSymbol for ReservedLiteral {
     fn to_literal(&self) -> String {
         let s = match self {
             ReservedLiteral::Return => "return",
+            ReservedLiteral::If => "if",
+            ReservedLiteral::Else => "else",
         };
         String::from(s)
     }

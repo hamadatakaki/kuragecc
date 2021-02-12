@@ -220,18 +220,20 @@ impl Parser {
     }
 
     fn parse_stmt(&mut self) -> ParserResult<ASTStmt> {
-        // stmt -> assign | declare | dec-ass | return
+        // stmt -> assign | declare | dec-ass | return | if
         let token = self.look_or_error()?;
+
+        use TokenKind::*;
+
         match token.kind {
-            TokenKind::Identifier(_) => self.parse_assign(),
-            TokenKind::Primitive(_) => self._parse_declare_or_dec_ass(),
-            TokenKind::Reserved(reserved) if reserved.is_literal(String::from("return")) => {
-                self.parse_return()
-            }
+            Identifier(_) => self.parse_assign(),
+            Primitive(_) => self._parse_declare_or_dec_ass(),
+            Reserved(res) if res.is_literal(format!("return")) => self.parse_return(),
+            Reserved(res) if res.is_literal(format!("if")) => self.parse_if(),
             _ => {
                 let error = ParserError::expected_token(
                     token.to_string(),
-                    String::from("return / <identifier> / <primitive>"),
+                    format!("return / <identifier> / <primitive>"),
                     token.location,
                 );
                 Err(error)
@@ -341,6 +343,90 @@ impl Parser {
 
         let kind = ASTStmtKind::Return(expr);
         let loc = ret.location.extend_to(semicolon.location);
+        Ok(ASTStmt::new(kind, self.scope, loc))
+    }
+
+    fn parse_if(&mut self) -> ParserResult<ASTStmt> {
+        // if -> `if` `(` expr `)` (stmt | comp-stmt) (`else` stmt)?
+
+        // if の parse
+        let res_if = self.look_and_forward().unwrap();
+
+        let normal_open = self.look_and_forward_or_error()?;
+
+        match normal_open.kind {
+            TokenKind::Paren(paren) if paren.is_literal('(') => {}
+            _ => {
+                let error = ParserError::expected_token(
+                    normal_open.to_string(),
+                    String::from("("),
+                    normal_open.location,
+                );
+                return Err(error);
+            }
+        }
+
+        let cond = self.parse_expr()?;
+
+        let normal_close = self.look_and_forward_or_error()?;
+
+        match normal_close.kind {
+            TokenKind::Paren(paren) if paren.is_literal(')') => {}
+            _ => {
+                let error = ParserError::expected_token(
+                    normal_close.to_string(),
+                    String::from(")"),
+                    normal_close.location,
+                );
+                return Err(error);
+            }
+        }
+
+        let mut t_stmts = vec![];
+        let mut f_stmts = vec![];
+
+        let token = self.look_or_error()?;
+        match token.clone().kind {
+            TokenKind::Paren(paren) if paren.is_literal('{') => {
+                println!("a: {}", token);
+                t_stmts = self.parse_comp_stmt()?;
+            }
+            _ => {
+                println!("b: {}", token);
+                t_stmts.push(self.parse_stmt()?);
+            }
+        }
+
+        let res_else = self.look_or_error()?;
+        println!("{:?}", t_stmts);
+
+        match res_else.kind {
+            // `else` なら forward だけして pass
+            TokenKind::Reserved(res) if res.is_literal(format!("else")) => {
+                self.forward();
+            }
+            _ => {
+                // `else` じゃなければ else は empty
+                let kind = ASTStmtKind::If(cond, t_stmts, f_stmts);
+                let end_loc = self.look_prev().unwrap().location;
+                let loc = res_if.location.extend_to(end_loc);
+                return Ok(ASTStmt::new(kind, self.scope, loc));
+            }
+        }
+
+        let token = self.look_or_error()?;
+        match token.kind {
+            TokenKind::Paren(paren) if paren.is_literal('{') => {
+                f_stmts = self.parse_comp_stmt()?;
+            }
+            _ => {
+                f_stmts.push(self.parse_stmt()?);
+            }
+        }
+
+        let kind = ASTStmtKind::If(cond, t_stmts, f_stmts);
+        let end_loc = self.look_prev().unwrap().location;
+        let loc = res_if.location.extend_to(end_loc);
         Ok(ASTStmt::new(kind, self.scope, loc))
     }
 

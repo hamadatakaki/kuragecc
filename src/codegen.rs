@@ -88,6 +88,7 @@ impl CodeGenerator {
                 Declare(id) => self.gen_declare(id),
                 DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
                 Return(expr) => self.gen_return(expr),
+                If(expr, t_stmts, f_stmts) => unimplemented!(),
             }
         }
     }

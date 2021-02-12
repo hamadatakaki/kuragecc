@@ -14,11 +14,12 @@ use types::Type;
     type-id   -> type identifier
     type      -> primitive
 
-    stmt    -> assign | declare | dec-ass | return
+    stmt  -> assign | declare | dec-ass | return | if
     assign  -> identifier `=` expr `;`
     declare -> type-id `;`
     dec-ass -> type-id `=` expr `;`
     return  -> `return` expr `;`
+    if      -> `if` `(` expr `)` stmt (`else` stmt)?
 
     expr      -> term expr'
     expr'     -> (`+`|`-`) term expr' | epsilon
@@ -96,6 +97,7 @@ pub enum ASTStmtKind {
     Declare(ASTIdentifier),
     DeclareAssign(ASTIdentifier, ASTExpr),
     Return(ASTExpr),
+    If(ASTExpr, Vec<ASTStmt>, Vec<ASTStmt>), // cond, true, false
 }
 
 #[derive(Debug, Clone)]
@@ -246,6 +248,24 @@ impl std::fmt::Display for ASTStmt {
             }
             Declare(id) => write!(f, "{}", id),
             Return(expr) => write!(f, "return {}", expr),
+            If(expr, t_stmts, f_stmts) => {
+                let mut lines = vec![format!("if({}){{", expr)];
+                for line in t_stmts {
+                    lines.push(format!("  {}\n", line));
+                }
+
+                lines.push(format!("}}"));
+
+                if !f_stmts.is_empty() {
+                    lines.push(format!("else{{"));
+                    for line in f_stmts {
+                        lines.push(format!("  {}\n", line));
+                    }
+                    lines.push(format!("}}"));
+                }
+
+                write!(f, "{}", lines.join(""))
+            }
         }
     }
 }
@@ -353,6 +373,19 @@ fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
         Return(expr) => {
             println!("Return <scope: {}>:", stmt.scope);
             visualize_ast_expr(expr, i + 1);
+        }
+        If(expr, t_stmts, f_stmts) => {
+            println!("If <scope: {}> ({}):", stmt.scope, expr);
+            for stmt in t_stmts {
+                visualize_ast_stmt(stmt, i + 1);
+            }
+
+            if !f_stmts.is_empty() {
+                println!("{}Else:", "  ".repeat(i));
+                for stmt in f_stmts {
+                    visualize_ast_stmt(stmt, i + 1);
+                }
+            }
         }
     }
 }

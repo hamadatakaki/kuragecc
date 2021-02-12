@@ -81,6 +81,7 @@ impl SemanticAnalyzer {
             Declare(id) => self.semantic_analyze_declare(id),
             DeclareAssign(id, expr) => self.semantic_analyze_declare_and_assign(id, expr),
             Return(expr) => self.semantic_analyze_return(expr),
+            If(expr, t_stmts, f_stmts) => unimplemented!(),
         }
     }
 
