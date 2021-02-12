@@ -15,18 +15,20 @@ pub enum ParserErrorKind {
 
 impl HasReason for ParserErrorKind {
     fn reason(&self) -> String {
+        use ParserErrorKind::*;
+
         match self {
-            ParserErrorKind::NotEndWithSemicolon => format!("Statement must end with `;`"),
-            ParserErrorKind::AssignStartsWithIdentifier => {
+            NotEndWithSemicolon => format!("Statement must end with `;`"),
+            AssignStartsWithIdentifier => {
                 format!("Assign must start with Identifier.")
             }
-            ParserErrorKind::AssignHasEqualOnSecondToken(id) => {
+            AssignHasEqualOnSecondToken(id) => {
                 format!("Assign must have `=` next to Identifier `{}`.", id)
             }
-            ParserErrorKind::StatementEndsInTheMiddle => {
+            StatementEndsInTheMiddle => {
                 format!("End of File appeared in the middle of analyzing statement.")
             }
-            ParserErrorKind::ExpectedToken(actual, expected) => {
+            ExpectedToken(actual, expected) => {
                 format!(
                     "Expected token is `{}`, actually the token is `{}`.",
                     expected, actual

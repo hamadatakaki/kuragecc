@@ -217,12 +217,14 @@ impl std::fmt::Display for ASTIdentifier {
 
 impl std::fmt::Display for ASTExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use ASTExprKind::*;
+
         match &self.kind {
-            ASTExprKind::Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
-            ASTExprKind::Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
-            ASTExprKind::Identifier(name) => write!(f, "{}", name),
-            ASTExprKind::Integer(n) => write!(f, "{}", n),
-            ASTExprKind::FuncCall(name, args) => {
+            Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
+            Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
+            Identifier(name) => write!(f, "{}", name),
+            Integer(n) => write!(f, "{}", n),
+            FuncCall(name, args) => {
                 let arg_string = args
                     .iter()
                     .map(|arg| format!("{}", arg))
@@ -236,12 +238,14 @@ impl std::fmt::Display for ASTExpr {
 
 impl std::fmt::Display for ASTStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use ASTStmtKind::*;
+
         match &self.kind {
-            ASTStmtKind::Assign(id, expr) | ASTStmtKind::DeclareAssign(id, expr) => {
+            Assign(id, expr) | DeclareAssign(id, expr) => {
                 write!(f, "{} {} =", id, expr)
             }
-            ASTStmtKind::Declare(id) => write!(f, "{}", id),
-            ASTStmtKind::Return(expr) => write!(f, "return {}", expr),
+            Declare(id) => write!(f, "{}", id),
+            Return(expr) => write!(f, "return {}", expr),
         }
     }
 }
@@ -297,24 +301,27 @@ fn visualize_ast_identifier(id: ASTIdentifier, i: usize) {
 
 fn visualize_ast_expr(expr: ASTExpr, i: usize) {
     print!("{}", "  ".repeat(i));
+
+    use ASTExprKind::*;
+
     match expr.kind {
-        ASTExprKind::Binary(l, r, ope) => {
+        Binary(l, r, ope) => {
             println!("Binary <scope: {}> {}:", expr.scope, ope.to_literal());
             visualize_ast_expr(*l, i + 1);
             visualize_ast_expr(*r, i + 1);
         }
-        ASTExprKind::Unary(factor, ope) => {
+        Unary(factor, ope) => {
             println!("Unary <scope: {}> {}:", expr.scope, ope.to_literal());
             visualize_ast_expr(*factor, i + 1);
         }
-        ASTExprKind::Identifier(id) => println!(
+        Identifier(id) => println!(
             "Identifier <scope: {}, type: {}> {},",
             id.scope,
             id.get_type(),
             id
         ),
-        ASTExprKind::Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
-        ASTExprKind::FuncCall(id, args) => {
+        Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
+        FuncCall(id, args) => {
             println!("FunctionCalled <scope: {}> {}:", expr.scope, id);
             for arg in args {
                 visualize_ast_expr(arg, i + 1);
@@ -325,22 +332,25 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
 
 fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
     print!("{}", "  ".repeat(i));
+
+    use ASTStmtKind::*;
+
     match stmt.kind {
-        ASTStmtKind::Assign(id, expr) => {
+        Assign(id, expr) => {
             println!("Assign <scope: {}>:", stmt.scope);
             visualize_ast_identifier(id, i + 1);
             visualize_ast_expr(expr, i + 1);
         }
-        ASTStmtKind::Declare(id) => {
+        Declare(id) => {
             println!("Declare <scope: {}>:", stmt.scope);
             visualize_ast_identifier(id, i + 1);
         }
-        ASTStmtKind::DeclareAssign(id, expr) => {
+        DeclareAssign(id, expr) => {
             println!("DeclareAssign <scope: {}>:", stmt.scope);
             visualize_ast_identifier(id, i + 1);
             visualize_ast_expr(expr, i + 1);
         }
-        ASTStmtKind::Return(expr) => {
+        Return(expr) => {
             println!("Return <scope: {}>:", stmt.scope);
             visualize_ast_expr(expr, i + 1);
         }

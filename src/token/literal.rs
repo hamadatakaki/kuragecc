@@ -17,9 +17,11 @@ pub enum PrimitiveType {
 
 impl PrimitiveType {
     pub fn as_code(&self) -> String {
+        use PrimitiveType::*;
+
         let s = match self {
-            PrimitiveType::Int => "i32",
-            PrimitiveType::Void => unimplemented!(),
+            Int => "i32",
+            Void => unimplemented!(),
         };
         String::from(s)
     }
@@ -36,17 +38,21 @@ impl TerminalSymbol for PrimitiveType {
     }
 
     fn from_literal(literal: String) -> PrimitiveType {
+        use PrimitiveType::*;
+
         match literal.as_str() {
-            "int" => PrimitiveType::Int,
-            "void" => PrimitiveType::Void,
+            "int" => Int,
+            "void" => Void,
             _ => unreachable!(),
         }
     }
 
     fn to_literal(&self) -> String {
+        use PrimitiveType::*;
+
         let s = match self {
-            PrimitiveType::Int => "int",
-            PrimitiveType::Void => "void",
+            Int => "int",
+            Void => "void",
         };
         String::from(s)
     }
@@ -99,17 +105,21 @@ impl TerminalSymbol for DelimiterKind {
     }
 
     fn from_literal(literal: char) -> DelimiterKind {
+        use DelimiterKind::*;
+
         match literal {
-            ';' => DelimiterKind::Semicolon,
-            ',' => DelimiterKind::Comma,
+            ';' => Semicolon,
+            ',' => Comma,
             _ => unreachable!(),
         }
     }
 
     fn to_literal(&self) -> char {
+        use DelimiterKind::*;
+
         match self {
-            DelimiterKind::Semicolon => ';',
-            DelimiterKind::Comma => ',',
+            Semicolon => ';',
+            Comma => ',',
         }
     }
 }
@@ -135,25 +145,29 @@ impl TerminalSymbol for ParenKind {
     }
 
     fn from_literal(literal: char) -> ParenKind {
+        use ParenKind::*;
+
         match literal {
-            '(' => ParenKind::NormalOpen,
-            ')' => ParenKind::NormalClose,
-            '[' => ParenKind::SquareOpen,
-            ']' => ParenKind::SquareClose,
-            '{' => ParenKind::CurlyOpen,
-            '}' => ParenKind::CurlyClose,
+            '(' => NormalOpen,
+            ')' => NormalClose,
+            '[' => SquareOpen,
+            ']' => SquareClose,
+            '{' => CurlyOpen,
+            '}' => CurlyClose,
             _ => unreachable!(),
         }
     }
 
     fn to_literal(&self) -> char {
+        use ParenKind::*;
+
         match self {
-            ParenKind::NormalOpen => '(',
-            ParenKind::NormalClose => ')',
-            ParenKind::SquareOpen => '[',
-            ParenKind::SquareClose => ']',
-            ParenKind::CurlyOpen => '{',
-            ParenKind::CurlyClose => '}',
+            NormalOpen => '(',
+            NormalClose => ')',
+            SquareOpen => '[',
+            SquareClose => ']',
+            CurlyOpen => '{',
+            CurlyClose => '}',
         }
     }
 }
@@ -191,10 +205,13 @@ pub enum OperatorKind {
 
 impl OperatorKind {
     pub fn priority(&self) -> OperatorPriority {
+        use OperatorKind::*;
+        use OperatorPriority::*;
+
         match self {
-            OperatorKind::Plus | OperatorKind::Minus => OperatorPriority::Addition,
-            OperatorKind::Times | OperatorKind::Devide => OperatorPriority::Multiplication,
-            OperatorKind::Assign => OperatorPriority::Assignment,
+            Plus | Minus => Addition,
+            Times | Devide => Multiplication,
+            Assign => Assignment,
         }
     }
 }
@@ -210,23 +227,27 @@ impl TerminalSymbol for OperatorKind {
     }
 
     fn from_literal(literal: String) -> OperatorKind {
+        use OperatorKind::*;
+
         match literal.as_str() {
-            "+" => OperatorKind::Plus,
-            "-" => OperatorKind::Minus,
-            "*" => OperatorKind::Times,
-            "/" => OperatorKind::Devide,
-            "=" => OperatorKind::Assign,
+            "+" => Plus,
+            "-" => Minus,
+            "*" => Times,
+            "/" => Devide,
+            "=" => Assign,
             _ => unreachable!(),
         }
     }
 
     fn to_literal(&self) -> String {
+        use OperatorKind::*;
+
         let s = match self {
-            OperatorKind::Plus => "+",
-            OperatorKind::Minus => "-",
-            OperatorKind::Times => "*",
-            OperatorKind::Devide => "/",
-            OperatorKind::Assign => "=",
+            Plus => "+",
+            Minus => "-",
+            Times => "*",
+            Devide => "/",
+            Assign => "=",
         };
         String::from(s)
     }

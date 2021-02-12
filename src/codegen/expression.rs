@@ -73,12 +73,12 @@ impl Expression {
     }
 }
 
-pub trait CodeExpression {
+pub trait AsCode {
     fn as_code(&self) -> String;
     fn get_type(&self) -> Type;
 }
 
-impl CodeExpression for Value {
+impl AsCode for Value {
     fn as_code(&self) -> String {
         match self.kind {
             ValueKind::Int(n) => format!("{}", n),
@@ -90,7 +90,7 @@ impl CodeExpression for Value {
     }
 }
 
-impl CodeExpression for Symbol {
+impl AsCode for Symbol {
     fn as_code(&self) -> String {
         self.name.clone()
     }
@@ -100,11 +100,13 @@ impl CodeExpression for Symbol {
     }
 }
 
-impl CodeExpression for Expression {
+impl AsCode for Expression {
     fn as_code(&self) -> String {
+        use ExpressionKind::*;
+
         match &self.kind {
-            ExpressionKind::Value(kind) => kind.as_code(),
-            ExpressionKind::Symbol(sym) => sym.as_code(),
+            Value(kind) => kind.as_code(),
+            Symbol(sym) => sym.as_code(),
         }
     }
 

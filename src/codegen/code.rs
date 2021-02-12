@@ -1,5 +1,5 @@
 use super::super::ast::types::Type;
-use super::expression::{CodeExpression, Expression, Symbol};
+use super::expression::{AsCode, Expression, Symbol};
 
 #[derive(Debug, Clone)]
 pub enum Code {
@@ -22,8 +22,10 @@ pub enum Code {
 
 impl Code {
     pub fn to_assembly(&self) -> String {
+        use Code::*;
+
         match self {
-            Code::FuncDefineOpen(sym, params) => {
+            FuncDefineOpen(sym, params) => {
                 let param_seq = params
                     .iter()
                     .map(|ty| ty.as_code())
@@ -37,20 +39,20 @@ impl Code {
                     param_seq
                 )
             }
-            Code::FuncDefineClose => format!("}}\n\n"),
-            Code::Alloca(sym) => format!(
+            FuncDefineClose => format!("}}\n\n"),
+            Alloca(sym) => format!(
                 "  {} = alloca {}\n",
                 sym.as_code(),
                 sym.get_type().as_code()
             ),
-            Code::Store(sym, value) => format!(
+            Store(sym, value) => format!(
                 "  store {} {}, {}* {}\n",
                 value.get_type().as_code(),
                 value.as_code(),
                 sym.get_type().as_code(),
                 sym.as_code()
             ),
-            Code::Load(from, to) => {
+            Load(from, to) => {
                 format!(
                     "  {} = load {}, {}* {}\n",
                     to.as_code(),
@@ -59,10 +61,10 @@ impl Code {
                     from.as_code()
                 )
             }
-            Code::Return(expr) => {
+            Return(expr) => {
                 format!("  ret {} {}\n", expr.get_type().as_code(), expr.as_code())
             }
-            Code::Add(left, right, ans) => {
+            Add(left, right, ans) => {
                 let ans = ans.as_code();
                 format!(
                     "  {} = add {} {}, {}\n",
@@ -72,7 +74,7 @@ impl Code {
                     right.as_code()
                 )
             }
-            Code::Sub(left, right, ans) => {
+            Sub(left, right, ans) => {
                 let ans = ans.as_code();
                 format!(
                     "  {} = sub {} {}, {}\n",
@@ -82,7 +84,7 @@ impl Code {
                     right.as_code()
                 )
             }
-            Code::Multi(left, right, ans) => {
+            Multi(left, right, ans) => {
                 let ans = ans.as_code();
                 format!(
                     "  {} = mul {} {}, {}\n",
@@ -92,7 +94,7 @@ impl Code {
                     right.as_code()
                 )
             }
-            Code::Divide(left, right, ans) => {
+            Divide(left, right, ans) => {
                 let ans = ans.as_code();
                 format!(
                     "  {} = sdiv {} {}, {}\n",
@@ -102,7 +104,7 @@ impl Code {
                     right.as_code()
                 )
             }
-            Code::FuncCall(sym, args, assigned) => {
+            FuncCall(sym, args, assigned) => {
                 let assigned = assigned.as_code();
                 let arg_seq = args
                     .iter()

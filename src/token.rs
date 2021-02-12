@@ -18,14 +18,16 @@ pub enum TokenKind {
 
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use TokenKind::*;
+
         match self {
-            TokenKind::Delimiter(_) => write!(f, "delim"),
-            TokenKind::Identifier(_) => write!(f, "ident"),
-            TokenKind::Integer(_) => write!(f, "integ"),
-            TokenKind::Operator(_) => write!(f, "opera"),
-            TokenKind::Paren(_) => write!(f, "paren"),
-            TokenKind::Reserved(_) => write!(f, "reser"),
-            TokenKind::Primitive(_) => write!(f, "prime"),
+            Delimiter(_) => write!(f, "delim"),
+            Identifier(_) => write!(f, "ident"),
+            Integer(_) => write!(f, "integ"),
+            Operator(_) => write!(f, "opera"),
+            Paren(_) => write!(f, "paren"),
+            Reserved(_) => write!(f, "reser"),
+            Primitive(_) => write!(f, "prime"),
         }
     }
 }
@@ -42,14 +44,16 @@ impl Token {
     }
 
     fn to_string(&self) -> String {
+        use TokenKind::*;
+
         match self.kind.clone() {
-            TokenKind::Delimiter(del_kind) => format!("{}", del_kind.to_literal()),
-            TokenKind::Identifier(name) => name,
-            TokenKind::Integer(n) => format!("{}", n),
-            TokenKind::Operator(ope_kind) => format!("{}", ope_kind.to_literal()),
-            TokenKind::Paren(paren_kind) => format!("{}", paren_kind.to_literal()),
-            TokenKind::Reserved(reserved) => format!("{}", reserved.to_literal()),
-            TokenKind::Primitive(primitive_type) => format!("{}", primitive_type.to_literal()),
+            Delimiter(del_kind) => format!("{}", del_kind.to_literal()),
+            Identifier(name) => name,
+            Integer(n) => format!("{}", n),
+            Operator(ope_kind) => format!("{}", ope_kind.to_literal()),
+            Paren(paren_kind) => format!("{}", paren_kind.to_literal()),
+            Reserved(reserved) => format!("{}", reserved.to_literal()),
+            Primitive(primitive_type) => format!("{}", primitive_type.to_literal()),
         }
     }
 }

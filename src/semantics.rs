@@ -74,13 +74,13 @@ impl SemanticAnalyzer {
     }
 
     fn semantic_analyze_stmt(&mut self, stmt: ASTStmt) {
+        use ASTStmtKind::*;
+
         match stmt.kind {
-            ASTStmtKind::Assign(id, expr) => self.semantic_analyze_assign(id, expr),
-            ASTStmtKind::Declare(id) => self.semantic_analyze_declare(id),
-            ASTStmtKind::DeclareAssign(id, expr) => {
-                self.semantic_analyze_declare_and_assign(id, expr)
-            }
-            ASTStmtKind::Return(expr) => self.semantic_analyze_return(expr),
+            Assign(id, expr) => self.semantic_analyze_assign(id, expr),
+            Declare(id) => self.semantic_analyze_declare(id),
+            DeclareAssign(id, expr) => self.semantic_analyze_declare_and_assign(id, expr),
+            Return(expr) => self.semantic_analyze_return(expr),
         }
     }
 
@@ -116,16 +116,18 @@ impl SemanticAnalyzer {
     }
 
     fn semantic_analyze_expr(&mut self, expr: ASTExpr) {
+        use ASTExprKind::*;
+
         match expr.clone().kind {
-            ASTExprKind::Binary(left, right, _) => {
+            Binary(left, right, _) => {
                 self.semantic_analyze_expr(*left);
                 self.semantic_analyze_expr(*right);
             }
-            ASTExprKind::Unary(factor, _) => {
+            Unary(factor, _) => {
                 self.semantic_analyze_expr(*factor);
             }
-            ASTExprKind::Integer(_) => {}
-            ASTExprKind::Identifier(id) => {
+            Integer(_) => {}
+            Identifier(id) => {
                 // 該当の変数がなければIdentifierIsNotDeclaredを吐く
                 if self.var_manager.search_name(&id).is_none() {
                     let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
@@ -133,7 +135,7 @@ impl SemanticAnalyzer {
                     self.errors.push(error)
                 }
             }
-            ASTExprKind::FuncCall(id, args) => {
+            FuncCall(id, args) => {
                 match self.func_manager.search_name(&id) {
                     Some(info) => {
                         // 引数の数をチェック

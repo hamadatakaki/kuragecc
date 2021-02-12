@@ -8,7 +8,7 @@ use super::ast::{
 };
 use super::token::literal::OperatorKind;
 use code::Code;
-use expression::{CodeExpression, Expression, ExpressionKind, Symbol, Value, ValueKind};
+use expression::{AsCode, Expression, ExpressionKind, Symbol, Value, ValueKind};
 use symbol_table::{FunctionTable, SymbolicTable, VariableTable};
 
 pub struct CodeGenerator {
@@ -76,11 +76,13 @@ impl CodeGenerator {
 
     fn gen_comp_stmts(&mut self, stmts: Vec<ASTStmt>) {
         for stmt in stmts {
+            use ASTStmtKind::*;
+
             match stmt.kind {
-                ASTStmtKind::Assign(id, expr) => self.gen_assign(id, expr),
-                ASTStmtKind::Declare(id) => self.gen_declare(id),
-                ASTStmtKind::DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
-                ASTStmtKind::Return(expr) => self.gen_return(expr),
+                Assign(id, expr) => self.gen_assign(id, expr),
+                Declare(id) => self.gen_declare(id),
+                DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
+                Return(expr) => self.gen_return(expr),
             }
         }
     }
@@ -147,14 +149,16 @@ impl CodeGenerator {
     }
 
     fn gen_expr(&mut self, expr: ASTExpr) -> Expression {
+        use ASTExprKind::*;
+
         match expr.kind {
-            ASTExprKind::Integer(n) => {
+            Integer(n) => {
                 let kind = ValueKind::Int(n as i32);
                 let value = Value::new(kind, Type::int());
                 value.to_expr()
             }
-            ASTExprKind::Identifier(id) => self.gen_identifier(id),
-            ASTExprKind::FuncCall(id, args) => {
+            Identifier(id) => self.gen_identifier(id),
+            FuncCall(id, args) => {
                 let sym = self.func_table.search_symbol(&id.get_name()).unwrap();
 
                 let mut syms = Vec::new();
@@ -168,7 +172,7 @@ impl CodeGenerator {
                 self.codes.push(code);
                 assigned.to_expr()
             }
-            ASTExprKind::Binary(left, right, ope) => {
+            Binary(left, right, ope) => {
                 let l = self.gen_expr(*left);
                 let r = self.gen_expr(*right);
                 let ty = l.get_type();
@@ -183,7 +187,7 @@ impl CodeGenerator {
                 self.codes.push(code);
                 ans.to_expr()
             }
-            ASTExprKind::Unary(factor, ope) => match ope {
+            Unary(factor, ope) => match ope {
                 OperatorKind::Minus => {
                     let expr = self.gen_expr(*factor);
                     match expr.kind {

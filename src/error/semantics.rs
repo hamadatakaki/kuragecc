@@ -14,17 +14,19 @@ pub enum SemanticErrorKind {
 
 impl HasReason for SemanticErrorKind {
     fn reason(&self) -> String {
+        use SemanticErrorKind::*;
+
         match self {
-            SemanticErrorKind::BlockMustEndAtFirstReturn => {
+            BlockMustEndAtFirstReturn => {
                 format!("Block must end at 1st return.")
             }
-            SemanticErrorKind::IdentifierIsNotDeclared(name) => {
+            IdentifierIsNotDeclared(name) => {
                 format!("Identifier `{}` is not declared.", name)
             }
-            SemanticErrorKind::FunctionIsNotDefined(name) => {
+            FunctionIsNotDefined(name) => {
                 format!("Function `{}` is not defined.", name)
             }
-            SemanticErrorKind::DifferentNumbersArgsTaken(name, actual, expected) => {
+            DifferentNumbersArgsTaken(name, actual, expected) => {
                 let s_actual = if *actual == 1 { "" } else { "s" };
                 let s_expected = if *expected == 1 { "" } else { "s" };
                 format!(

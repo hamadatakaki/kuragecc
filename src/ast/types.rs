@@ -5,7 +5,7 @@ pub struct CustomType {
     name: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Type {
     Primitive(PrimitiveType),
     Custom(CustomType),
@@ -24,19 +24,45 @@ impl Type {
             _ => unimplemented!(),
         }
     }
+
+    fn invalid(&self) -> bool {
+        match self {
+            Type::InvalidTypeError => true,
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq for Type {
+    fn eq(&self, other: &Self) -> bool {
+        if self.invalid() || other.invalid() {
+            return false;
+        }
+
+        use Type::*;
+
+        match (self, other) {
+            (&Primitive(ref p), &Primitive(ref q)) => p == q,
+            (&Custom(ref c), &Custom(ref d)) => c == d,
+            (&None, &None) => true,
+            _ => false,
+        }
+    }
 }
 
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Type::*;
+
         match self {
-            Type::Primitive(primitive) => {
+            Primitive(primitive) => {
                 write!(f, "{}", primitive.to_literal())
             }
-            Type::Custom(custom) => {
+            Custom(custom) => {
                 write!(f, "{}", custom.name)
             }
-            Type::InvalidTypeError => write!(f, "<invalid-type-error-occured>"),
-            Type::None => write!(f, "<none>"),
+            InvalidTypeError => write!(f, "<invalid-type-error-occured>"),
+            None => write!(f, "<none>"),
         }
     }
 }
