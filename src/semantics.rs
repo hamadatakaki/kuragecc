@@ -1,5 +1,6 @@
 pub mod identifier;
 
+use super::ast::types::Type;
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
     AST,
@@ -81,7 +82,7 @@ impl SemanticAnalyzer {
             Declare(id) => self.semantic_analyze_declare(id),
             DeclareAssign(id, expr) => self.semantic_analyze_declare_and_assign(id, expr),
             Return(expr) => self.semantic_analyze_return(expr),
-            If(expr, t_stmts, f_stmts) => unimplemented!(),
+            If(expr, t_stmts, f_stmts) => self.semantic_analyze_if(expr, t_stmts, f_stmts),
         }
     }
 
@@ -123,6 +124,19 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_return(&mut self, expr: ASTExpr) {
         self.semantic_analyze_expr(expr)
+    }
+
+    fn semantic_analyze_if(&mut self, cond: ASTExpr, t_stmts: Vec<ASTStmt>, f_stmts: Vec<ASTStmt>) {
+        let cond_type = cond.get_type();
+        // cond の型は int であるべき.
+        if cond_type != Type::int() {
+            let kind = SemanticErrorKind::TypesAreDifferent(cond_type, Type::int());
+            let error = SemanticError::new(kind, cond.get_loc());
+            self.errors.push(error)
+        }
+
+        self.semantic_analyze_comp_stmts(t_stmts);
+        self.semantic_analyze_comp_stmts(f_stmts);
     }
 
     fn semantic_analyze_expr(&mut self, expr: ASTExpr) {
