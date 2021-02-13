@@ -51,7 +51,7 @@ impl FunctionManager {
         self.info_stack.push(info);
 
         match std::env::var("RUST_BACKTRACE") {
-            Ok(s) if s.as_str() == "ID" => {
+            Ok(s) if s.as_str() == "SCOPE" => {
                 print!("info: ");
                 let s = self
                     .info_stack

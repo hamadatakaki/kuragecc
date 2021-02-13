@@ -25,6 +25,16 @@ impl SemanticAnalyzer {
         }
     }
 
+    fn deepen_scope(&mut self) {
+        self.var_manager.deepen_scope();
+        self.func_manager.deepen_scope();
+    }
+
+    fn shallow_scope(&mut self) {
+        self.var_manager.shallow_scope();
+        self.func_manager.shallow_scope();
+    }
+
     pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<()> {
         self.semantic_analyze_program(ast);
         if self.errors.is_empty() {
@@ -57,9 +67,10 @@ impl SemanticAnalyzer {
         self.func_manager.push_info(info);
 
         // スコープを一段階深くし、関数引数のスコープを記憶
-        self.var_manager.deepen_scope();
+        self.deepen_scope();
+
         for param in params {
-            let info = IdentifierInformation::new(param, 0);
+            let info = IdentifierInformation::new(param);
             self.var_manager.push_info(info);
         }
 
@@ -67,7 +78,7 @@ impl SemanticAnalyzer {
         self.semantic_analyze_comp_stmts(stmts.clone());
 
         // 関数のスコープから抜ける処理
-        self.var_manager.shallow_scope();
+        self.shallow_scope();
     }
 
     fn semantic_analyze_comp_stmts(&mut self, stmts: Vec<ASTStmt>) {
@@ -102,7 +113,7 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_declare(&mut self, id: ASTIdentifier) {
         // 新たな変数名を追加
-        let info = IdentifierInformation::new(id, 0);
+        let info = IdentifierInformation::new(id);
         self.var_manager.push_info(info);
     }
 
@@ -119,7 +130,7 @@ impl SemanticAnalyzer {
         }
 
         // 新たな変数名を追加
-        let info = IdentifierInformation::new(id, 0);
+        let info = IdentifierInformation::new(id);
         self.var_manager.push_info(info);
     }
 
@@ -167,7 +178,7 @@ impl SemanticAnalyzer {
                         let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
                         let error = SemanticError::new(kind, expr.get_loc());
                         self.errors.push(error);
-                        Type::None
+                        Type::NoneType
                     }
                     Some(info) => info.get_type(),
                 }
@@ -192,7 +203,7 @@ impl SemanticAnalyzer {
                         let kind = SemanticErrorKind::FunctionIsNotDefined(id.get_name());
                         let error = SemanticError::new(kind, expr.get_loc());
                         self.errors.push(error);
-                        Type::None
+                        Type::NoneType
                     }
                 }
             }

@@ -4,12 +4,11 @@ use super::super::ast::ASTIdentifier;
 #[derive(Debug, Clone)]
 pub struct IdentifierInformation {
     id: ASTIdentifier,
-    pub param_size: usize,
 }
 
 impl IdentifierInformation {
-    pub fn new(id: ASTIdentifier, param_size: usize) -> Self {
-        Self { id, param_size }
+    pub fn new(id: ASTIdentifier) -> Self {
+        Self { id }
     }
 
     pub fn has_same_name(&self, name: &String) -> bool {
@@ -51,7 +50,7 @@ impl IdentifierManager {
         self.info_stack.push(info);
 
         match std::env::var("RUST_BACKTRACE") {
-            Ok(s) if s.as_str() == "ID" => {
+            Ok(s) if s.as_str() == "SCOPE" => {
                 print!("info: ");
                 let s = self
                     .info_stack

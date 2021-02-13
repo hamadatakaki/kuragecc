@@ -552,7 +552,7 @@ impl Parser {
         match token.kind {
             TokenKind::Identifier(name) => Ok(ASTIdentifier::new(
                 name,
-                Type::None,
+                Type::NoneType,
                 self.scope,
                 token.location,
             )),

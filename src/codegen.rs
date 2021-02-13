@@ -88,7 +88,7 @@ impl CodeGenerator {
                 Declare(id) => self.gen_declare(id),
                 DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
                 Return(expr) => self.gen_return(expr),
-                If(expr, t_stmts, f_stmts) => unimplemented!(),
+                If(expr, t_stmts, f_stmts) => self.gen_if(expr, t_stmts, f_stmts),
             }
         }
     }
@@ -145,6 +145,10 @@ impl CodeGenerator {
             _ => self.gen_expr(expr),
         };
         self.codes.push(Code::Return(ret))
+    }
+
+    fn gen_if(&mut self, expr: ASTExpr, t_stmts: Vec<ASTStmt>, f_stmts: Vec<ASTStmt>) {
+        unimplemented!();
     }
 
     fn gen_identifier(&mut self, id: ASTIdentifier) -> Expression {
