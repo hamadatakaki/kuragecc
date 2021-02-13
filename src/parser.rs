@@ -1,7 +1,7 @@
 use super::ast::types::Type;
 use super::ast::{
-    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
-    AST,
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
+    AsSyntaxExpression, AsSyntaxStatement, AST,
 };
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
@@ -195,7 +195,7 @@ impl Parser {
         let identifier = self.parse_identifier()?;
 
         let loc = loc.extend_to(identifier.get_loc());
-        let id = ASTIdentifier::new(identifier.get_name(), ty, identifier.get_scope(), loc);
+        let id = ASTIdentifier::new(identifier.get_name(), ty, loc);
         Ok(id)
     }
 
@@ -430,7 +430,7 @@ impl Parser {
 
                 let loc = expr_left.get_loc().extend_to(term.get_loc());
                 let kind = ASTExprKind::Binary(Box::new(expr_left), Box::new(term), ope_kind);
-                let expr = ASTExpr::new(kind, self.scope, loc);
+                let expr = ASTExpr::new(kind, loc);
 
                 self.parse_expr_prime(expr)
             }
@@ -454,7 +454,7 @@ impl Parser {
 
                 let loc = term_left.get_loc().extend_to(unary.get_loc());
                 let kind = ASTExprKind::Binary(Box::new(term_left), Box::new(unary), ope_kind);
-                let term = ASTExpr::new(kind, self.scope, loc);
+                let term = ASTExpr::new(kind, loc);
 
                 self.parse_term_prime(term)
             }
@@ -477,7 +477,7 @@ impl Parser {
             Some(OperatorKind::Minus) => {
                 let loc = token.location.extend_to(factor.get_loc());
                 let kind = ASTExprKind::Unary(Box::new(factor), OperatorKind::Minus);
-                Ok(ASTExpr::new(kind, self.scope, loc))
+                Ok(ASTExpr::new(kind, loc))
             }
             _ => Ok(factor),
         }
@@ -534,7 +534,7 @@ impl Parser {
         match token.kind {
             TokenKind::Integer(n) => {
                 let kind = ASTExprKind::Integer(n);
-                Ok(ASTExpr::new(kind, self.scope, token.location))
+                Ok(ASTExpr::new(kind, token.location))
             }
             _ => {
                 let error = ParserError::expected_token(
@@ -549,13 +549,11 @@ impl Parser {
 
     fn parse_identifier(&mut self) -> ParserResult<ASTIdentifier> {
         let token = self.look_and_forward_or_error()?;
+
+        use TokenKind::Identifier;
+
         match token.kind {
-            TokenKind::Identifier(name) => Ok(ASTIdentifier::new(
-                name,
-                Type::NoneType,
-                self.scope,
-                token.location,
-            )),
+            Identifier(name) => Ok(ASTIdentifier::new(name, Type::NoneType, token.location)),
             _ => {
                 let error = ParserError::expected_token(
                     token.to_string(),
@@ -576,7 +574,7 @@ impl Parser {
             TokenKind::Paren(paren) if paren.is_literal('(') => {}
             _ => {
                 let kind = ASTExprKind::Identifier(id.clone());
-                return Ok(ASTExpr::new(kind, self.scope, id.get_loc()));
+                return Ok(ASTExpr::new(kind, id.get_loc()));
             }
         }
 
@@ -600,7 +598,7 @@ impl Parser {
 
         let loc = id.get_loc().extend_to(normal_close.location);
         let kind = ASTExprKind::FuncCall(id, args);
-        Ok(ASTExpr::new(kind, self.scope, loc))
+        Ok(ASTExpr::new(kind, loc))
     }
 
     fn parse_func_call_args(&mut self) -> ParserResult<Vec<ASTExpr>> {

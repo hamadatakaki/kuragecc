@@ -36,16 +36,14 @@ use types::Type;
 pub struct ASTIdentifier {
     name: String,
     id_type: Type,
-    scope: i32,
     location: Location,
 }
 
 impl ASTIdentifier {
-    pub fn new(name: String, id_type: Type, scope: i32, loc: Location) -> Self {
+    pub fn new(name: String, id_type: Type, loc: Location) -> Self {
         Self {
             name,
             id_type,
-            scope,
             location: loc,
         }
     }
@@ -71,15 +69,13 @@ pub enum ASTExprKind {
 #[derive(Debug, Clone)]
 pub struct ASTExpr {
     pub kind: ASTExprKind,
-    scope: i32,
     location: Location,
 }
 
 impl ASTExpr {
-    pub fn new(kind: ASTExprKind, scope: i32, loc: Location) -> Self {
+    pub fn new(kind: ASTExprKind, loc: Location) -> Self {
         Self {
             kind,
-            scope,
             location: loc,
         }
     }
@@ -150,12 +146,28 @@ impl AST {
     }
 }
 
-pub trait PartialAST {
+pub trait AsSyntaxExpression {
+    fn get_loc(&self) -> Location;
+}
+
+pub trait AsSyntaxStatement {
     fn get_scope(&self) -> i32;
     fn get_loc(&self) -> Location;
 }
 
-impl PartialAST for ASTIdentifier {
+impl AsSyntaxExpression for ASTIdentifier {
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl AsSyntaxExpression for ASTExpr {
+    fn get_loc(&self) -> Location {
+        self.location
+    }
+}
+
+impl AsSyntaxStatement for ASTStmt {
     fn get_scope(&self) -> i32 {
         self.scope
     }
@@ -165,7 +177,7 @@ impl PartialAST for ASTIdentifier {
     }
 }
 
-impl PartialAST for ASTExpr {
+impl AsSyntaxStatement for ASTBlock {
     fn get_scope(&self) -> i32 {
         self.scope
     }
@@ -175,27 +187,7 @@ impl PartialAST for ASTExpr {
     }
 }
 
-impl PartialAST for ASTStmt {
-    fn get_scope(&self) -> i32 {
-        self.scope
-    }
-
-    fn get_loc(&self) -> Location {
-        self.location
-    }
-}
-
-impl PartialAST for ASTBlock {
-    fn get_scope(&self) -> i32 {
-        self.scope
-    }
-
-    fn get_loc(&self) -> Location {
-        self.location
-    }
-}
-
-impl PartialAST for AST {
+impl AsSyntaxStatement for AST {
     fn get_scope(&self) -> i32 {
         self.scope
     }
@@ -305,7 +297,7 @@ pub fn visualize_ast(ast: AST) {
 
 fn visualize_ast_identifier(id: ASTIdentifier, i: usize) {
     print!("{}", "  ".repeat(i));
-    println!("Identifier <scope: {}> {},", id.scope, id)
+    println!("Identifier {},", id)
 }
 
 fn visualize_ast_expr(expr: ASTExpr, i: usize) {
@@ -315,18 +307,18 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
 
     match expr.kind {
         Binary(l, r, ope) => {
-            println!("Binary <scope: {}> {}:", expr.scope, ope.to_literal());
+            println!("Binary {}:", ope.to_literal());
             visualize_ast_expr(*l, i + 1);
             visualize_ast_expr(*r, i + 1);
         }
         Unary(factor, ope) => {
-            println!("Unary <scope: {}> {}:", expr.scope, ope.to_literal());
+            println!("Unary {}:", ope.to_literal());
             visualize_ast_expr(*factor, i + 1);
         }
-        Identifier(id) => println!("Identifier <scope: {}> {},", id.scope, id),
-        Integer(n) => println!("Integer <scope: {}> {},", expr.scope, n),
+        Identifier(id) => println!("Identifier {},", id),
+        Integer(n) => println!("Integer {},", n),
         FuncCall(id, args) => {
-            println!("FunctionCalled <scope: {}> {}:", expr.scope, id);
+            println!("FunctionCalled {}:", id);
             for arg in args {
                 visualize_ast_expr(arg, i + 1);
             }
@@ -365,7 +357,7 @@ fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
             }
 
             if !f_stmts.is_empty() {
-                println!("{}Else:", "  ".repeat(i));
+                println!("{}Else <scope: {}>:", "  ".repeat(i), stmt.scope);
                 for stmt in f_stmts {
                     visualize_ast_stmt(stmt, i + 1);
                 }

@@ -17,7 +17,7 @@ fn main() {
         // "example/main5.tmpc",
         // "example/main6.tmpc",
         // "example/main7.tmpc",
-        // "example/main8.tmpc",
+        "example/main8.tmpc",
         "example/main9.tmpc",
         // "example/lexer_error.tmpc",
         // "example/parser_error0.tmpc",
