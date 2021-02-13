@@ -4,12 +4,12 @@ use super::super::ast::ASTIdentifier;
 #[derive(Debug, Clone)]
 pub struct FunctionInformation {
     id: ASTIdentifier,
-    pub param_size: usize,
+    pub param_def: Vec<Type>,
 }
 
 impl FunctionInformation {
-    pub fn new(id: ASTIdentifier, param_size: usize) -> Self {
-        Self { id, param_size }
+    pub fn new(id: ASTIdentifier, param_def: Vec<Type>) -> Self {
+        Self { id, param_def }
     }
 
     pub fn has_same_name(&self, name: &String) -> bool {
@@ -18,6 +18,10 @@ impl FunctionInformation {
 
     pub fn get_type(&self) -> Type {
         self.id.get_type()
+    }
+
+    pub fn param_size(&self) -> usize {
+        self.param_def.len()
     }
 }
 

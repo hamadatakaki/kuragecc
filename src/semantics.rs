@@ -3,8 +3,8 @@ pub mod identifier;
 
 use super::ast::types::Type;
 use super::ast::{
-    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, PartialAST,
-    AST,
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
+    AsSyntaxExpression, AST,
 };
 use super::error::semantics::{SemanticError, SemanticErrorKind, SemanticResult};
 use function::{FunctionInformation, FunctionManager};
@@ -25,15 +25,15 @@ impl SemanticAnalyzer {
         }
     }
 
-    fn deepen_scope(&mut self) {
-        self.var_manager.deepen_scope();
-        self.func_manager.deepen_scope();
-    }
+    // fn deepen_scope(&mut self) {
+    //     self.var_manager.deepen_scope();
+    //     self.func_manager.deepen_scope();
+    // }
 
-    fn shallow_scope(&mut self) {
-        self.var_manager.shallow_scope();
-        self.func_manager.shallow_scope();
-    }
+    // fn shallow_scope(&mut self) {
+    //     self.var_manager.shallow_scope();
+    //     self.func_manager.shallow_scope();
+    // }
 
     pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<()> {
         self.semantic_analyze_program(ast);
@@ -62,23 +62,27 @@ impl SemanticAnalyzer {
         params: Vec<ASTIdentifier>,
         stmts: Vec<ASTStmt>,
     ) {
-        // 関数名のスコープを記憶
-        let info = FunctionInformation::new(id, params.len());
-        self.func_manager.push_info(info);
-
         // スコープを一段階深くし、関数引数のスコープを記憶
-        self.deepen_scope();
+        self.var_manager.deepen_scope();
 
-        for param in params {
+        for param in params.clone() {
             let info = IdentifierInformation::new(param);
             self.var_manager.push_info(info);
         }
+
+        // 関数名のスコープを記憶
+        let param_def = params
+            .iter()
+            .map(|id| id.get_type().clone())
+            .collect::<Vec<Type>>();
+        let info = FunctionInformation::new(id, param_def);
+        self.func_manager.push_info(info);
 
         // 関数定義内の解析
         self.semantic_analyze_comp_stmts(stmts.clone());
 
         // 関数のスコープから抜ける処理
-        self.shallow_scope();
+        self.var_manager.shallow_scope();
     }
 
     fn semantic_analyze_comp_stmts(&mut self, stmts: Vec<ASTStmt>) {
@@ -188,11 +192,12 @@ impl SemanticAnalyzer {
                 match self.func_manager.search_name(&id) {
                     Some(info) => {
                         // 引数の数をチェック
-                        if info.param_size != args.len() {
+                        let size = info.param_size();
+                        if size != args.len() {
                             let kind = SemanticErrorKind::DifferentNumbersArgsTaken(
                                 id.get_name(),
                                 args.len(),
-                                info.param_size,
+                                size,
                             );
                             let error = SemanticError::new(kind, expr.get_loc());
                             self.errors.push(error);
