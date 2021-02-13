@@ -1,3 +1,4 @@
+pub mod function;
 pub mod identifier;
 
 use super::ast::types::Type;
@@ -6,11 +7,12 @@ use super::ast::{
     AST,
 };
 use super::error::semantics::{SemanticError, SemanticErrorKind, SemanticResult};
+use function::{FunctionInformation, FunctionManager};
 use identifier::{IdentifierInformation, IdentifierManager};
 
 pub struct SemanticAnalyzer {
     var_manager: IdentifierManager,
-    func_manager: IdentifierManager,
+    func_manager: FunctionManager,
     errors: Vec<SemanticError>,
 }
 
@@ -18,7 +20,7 @@ impl SemanticAnalyzer {
     pub fn new() -> Self {
         Self {
             var_manager: IdentifierManager::new(),
-            func_manager: IdentifierManager::new(),
+            func_manager: FunctionManager::new(),
             errors: Vec::new(),
         }
     }
@@ -51,7 +53,7 @@ impl SemanticAnalyzer {
         stmts: Vec<ASTStmt>,
     ) {
         // 関数名のスコープを記憶
-        let info = IdentifierInformation::new(id, params.len());
+        let info = FunctionInformation::new(id, params.len());
         self.func_manager.push_info(info);
 
         // スコープを一段階深くし、関数引数のスコープを記憶
