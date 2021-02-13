@@ -35,6 +35,11 @@ impl SemanticAnalyzer {
     //     self.func_manager.shallow_scope();
     // }
 
+    fn declare_new_variable(&mut self, id: ASTIdentifier) {
+        let info = IdentifierInformation::new(id);
+        self.var_manager.push_info(info);
+    }
+
     pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<()> {
         self.semantic_analyze_program(ast);
         if self.errors.is_empty() {
@@ -96,7 +101,7 @@ impl SemanticAnalyzer {
 
         match stmt.kind {
             Assign(id, expr) => self.semantic_analyze_assign(id, expr),
-            Declare(id) => self.semantic_analyze_declare(id),
+            Declare(id) => self.declare_new_variable(id),
             DeclareAssign(id, expr) => self.semantic_analyze_declare_and_assign(id, expr),
             Return(expr) => self.semantic_analyze_return(expr),
             If(expr, t_stmts, f_stmts) => self.semantic_analyze_if(expr, t_stmts, f_stmts),
@@ -105,21 +110,33 @@ impl SemanticAnalyzer {
 
     fn semantic_analyze_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // exprを解析
-        self.semantic_analyze_expr(expr);
+        let expr_type = self.semantic_analyze_expr(expr);
 
-        // 該当の変数がなければIdentifierIsNotDeclaredを吐く
-        if self.var_manager.search_name(&id).is_none() {
-            let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
-            let error = SemanticError::new(kind, id.get_loc());
-            self.errors.push(error)
+        // idに該当する変数が宣言されているかを探索
+        match self.var_manager.search_name(&id) {
+            Some(info) => {
+                // 該当の変数があればtype-check
+                let id_type = info.get_type();
+                if id_type != expr_type {
+                    let kind = SemanticErrorKind::TypeIsDifferent(id_type, expr_type);
+                    let error = SemanticError::new(kind, id.get_loc());
+                    self.errors.push(error)
+                }
+            }
+            None => {
+                // 該当の変数がなければIdentifierIsNotDeclaredを吐く
+                let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
+                let error = SemanticError::new(kind, id.get_loc());
+                self.errors.push(error)
+            }
         }
     }
 
-    fn semantic_analyze_declare(&mut self, id: ASTIdentifier) {
-        // 新たな変数名を追加
-        let info = IdentifierInformation::new(id);
-        self.var_manager.push_info(info);
-    }
+    // fn semantic_analyze_declare(&mut self, id: ASTIdentifier) {
+    //     // 新たな変数名を追加
+    //     let info = IdentifierInformation::new(id);
+    //     self.var_manager.push_info(info);
+    // }
 
     fn semantic_analyze_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // exprを解析
@@ -128,14 +145,13 @@ impl SemanticAnalyzer {
         // type-check
         let id_type = id.get_type();
         if id_type != expr_type {
-            let kind = SemanticErrorKind::TypesAreDifferent(id_type, expr_type);
+            let kind = SemanticErrorKind::TypeIsDifferent(id_type, expr_type);
             let error = SemanticError::new(kind, id.get_loc());
             self.errors.push(error)
         }
 
         // 新たな変数名を追加
-        let info = IdentifierInformation::new(id);
-        self.var_manager.push_info(info);
+        self.declare_new_variable(id);
     }
 
     fn semantic_analyze_return(&mut self, expr: ASTExpr) {
@@ -146,7 +162,7 @@ impl SemanticAnalyzer {
         let cond_type = self.semantic_analyze_expr(cond.clone());
         // cond の型は int であるべき.
         if cond_type != Type::int() {
-            let kind = SemanticErrorKind::TypesAreDifferent(cond_type, Type::int());
+            let kind = SemanticErrorKind::TypeIsDifferent(cond_type, Type::int());
             let error = SemanticError::new(kind, cond.get_loc());
             self.errors.push(error)
         }
@@ -159,19 +175,25 @@ impl SemanticAnalyzer {
         use ASTExprKind::*;
 
         match expr.clone().kind {
-            Binary(left, right, _) => {
-                // TODO: ope の type check
+            Binary(left, right, _ope) => {
                 let left_type = self.semantic_analyze_expr(*left);
                 let right_type = self.semantic_analyze_expr(*right);
-                if left_type != right_type {
-                    // type error !
+
+                // TODO: ope の type check
+                if (left_type != Type::int()) && (right_type != Type::int()) {
                     unimplemented!()
                 }
                 left_type
             }
-            Unary(factor, _) => {
+            Unary(factor, _ope) => {
+                let factor_type = self.semantic_analyze_expr(*factor);
+
                 // TODO: ope の type check
-                self.semantic_analyze_expr(*factor)
+                if factor_type != Type::int() {
+                    unimplemented!()
+                }
+
+                factor_type
             }
             Integer(_) => Type::int(),
             Identifier(id) => {
@@ -188,7 +210,6 @@ impl SemanticAnalyzer {
                 }
             }
             FuncCall(id, args) => {
-                // TODO: 引数型の type check
                 match self.func_manager.search_name(&id) {
                     Some(info) => {
                         // 引数の数をチェック
@@ -201,7 +222,28 @@ impl SemanticAnalyzer {
                             );
                             let error = SemanticError::new(kind, expr.get_loc());
                             self.errors.push(error);
+                        } else {
+                            // 引数型のチェック
+                            for (k, (param_type, arg)) in
+                                info.param_def.iter().zip(args).enumerate()
+                            {
+                                let param_type = param_type.clone();
+                                let arg_type = self.semantic_analyze_expr(arg);
+
+                                if param_type != arg_type {
+                                    // 引数型が不一致のエラー
+                                    let kind = SemanticErrorKind::FunctionArgTypeIsDifferent(
+                                        id.get_name(),
+                                        k,
+                                        arg_type,
+                                        param_type,
+                                    );
+                                    let error = SemanticError::new(kind, id.get_loc());
+                                    self.errors.push(error)
+                                }
+                            }
                         }
+
                         info.get_type()
                     }
                     None => {

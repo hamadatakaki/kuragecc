@@ -297,7 +297,7 @@ pub fn visualize_ast(ast: AST) {
 
 fn visualize_ast_identifier(id: ASTIdentifier, i: usize) {
     print!("{}", "  ".repeat(i));
-    println!("Identifier {},", id)
+    println!("Identifier {}", id)
 }
 
 fn visualize_ast_expr(expr: ASTExpr, i: usize) {
@@ -315,8 +315,8 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
             println!("Unary {}:", ope.to_literal());
             visualize_ast_expr(*factor, i + 1);
         }
-        Identifier(id) => println!("Identifier {},", id),
-        Integer(n) => println!("Integer {},", n),
+        Identifier(id) => println!("Identifier {}", id),
+        Integer(n) => println!("Integer {}", n),
         FuncCall(id, args) => {
             println!("FunctionCalled {}:", id);
             for arg in args {
@@ -370,15 +370,11 @@ fn visualize_ast_block(block: ASTBlock, i: usize) {
     print!("{}", "  ".repeat(i));
     match block.kind {
         ASTBlockKind::Func(id, params, stmts) => {
-            let param_string = params
-                .iter()
-                .map(|arg| format!("{}", arg))
-                .collect::<Vec<String>>()
-                .join(", ");
-            println!(
-                "Function <scope: {}> {}({}):",
-                block.scope, id, param_string
-            );
+            println!("Function <scope: {}> {}:", block.scope, id);
+            for p in params {
+                visualize_ast_identifier(p, i + 1);
+            }
+            println!("{}Function-Statement:", "  ".repeat(i));
             for stmt in stmts {
                 visualize_ast_stmt(stmt, i + 1);
             }
