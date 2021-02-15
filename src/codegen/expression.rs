@@ -76,6 +76,10 @@ impl Expression {
 pub trait AsCode {
     fn as_code(&self) -> String;
     fn get_type(&self) -> Type;
+
+    fn type_as_code(&self) -> String {
+        self.get_type().as_code()
+    }
 }
 
 impl AsCode for Value {

@@ -1,19 +1,14 @@
 int main() {
+    int d = 0;
     int c = 1;
 
-    if (c)
-        c = 8;
-
-    if (c - 7) {
-        c = 1;
-    }
-
-    if (c) {} else 
-        int d = 4;
-
-    if (c) {
+    if (d)
         return 42;
-    } else {
-        return 0;
+    else {
+        if (345) {
+            return c*10;
+        } else {
+            return c - 1;
+        }
     }
 }

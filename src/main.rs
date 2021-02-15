@@ -108,6 +108,9 @@ fn compile(path: &str) {
 
     // Code Generator
     let mut generator = CodeGenerator::new(ast);
-    let code = generator.gen_code();
-    println!("{}", code);
+    let asm = generator.gen_assembly();
+    if std::env::var("RUST_BACKTRACE").is_ok() {
+        println!("{}", asm);
+    }
+    println!("{}", asm.to_assembly());
 }

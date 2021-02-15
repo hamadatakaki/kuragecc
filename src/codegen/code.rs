@@ -1,23 +1,31 @@
 use super::super::ast::types::Type;
+// use super::super::token::literal::OperatorKind;
 use super::expression::{AsCode, Expression, Symbol};
 
 #[derive(Debug, Clone)]
 pub enum Code {
+    EmptyLine, // 空行
+    // function
     FuncDefineOpen(Symbol, Vec<Type>),
     FuncDefineClose,
+    // declare, assign
     Alloca(Symbol),
-    // (to, stored-value)
-    Store(Symbol, Expression),
-    // (from, to)
-    Load(Symbol, Symbol),
+    Store(Symbol, Expression), // (to, stored-value)
+    Load(Symbol, Symbol),      // (from, to)
+    // return
     Return(Expression),
-    // binary operations: (left, right, ans)
+    // binary operations: (l, r, ans)
     Add(Expression, Expression, Symbol),
     Sub(Expression, Expression, Symbol),
     Multi(Expression, Expression, Symbol),
     Divide(Expression, Expression, Symbol),
-    // function calling: (sym, args, assigned)
+    Compare(Expression, Expression, Symbol),
+    // function calling: (name, args, to)
     FuncCall(Symbol, Vec<Expression>, Symbol),
+    // label
+    Label(String),
+    // branch
+    Branch(Expression, String, String),
 }
 
 impl Code {
@@ -25,87 +33,73 @@ impl Code {
         use Code::*;
 
         match self {
+            EmptyLine => format!("\n"),
             FuncDefineOpen(sym, params) => {
                 let param_seq = params
                     .iter()
                     .map(|ty| ty.as_code())
                     .collect::<Vec<String>>()
                     .join(", ");
-
                 format!(
                     "define {} @{}({}) {{\n",
-                    sym.get_type().as_code(),
+                    sym.type_as_code(),
                     sym.as_code(),
                     param_seq
                 )
             }
             FuncDefineClose => format!("}}\n\n"),
-            Alloca(sym) => format!(
-                "  {} = alloca {}\n",
-                sym.as_code(),
-                sym.get_type().as_code()
-            ),
-            Store(sym, value) => format!(
+            Alloca(sym) => format!("  {} = alloca {}\n", sym.as_code(), sym.type_as_code()),
+            Store(sym, val) => format!(
                 "  store {} {}, {}* {}\n",
-                value.get_type().as_code(),
-                value.as_code(),
-                sym.get_type().as_code(),
+                val.type_as_code(),
+                val.as_code(),
+                sym.type_as_code(),
                 sym.as_code()
             ),
-            Load(from, to) => {
-                format!(
-                    "  {} = load {}, {}* {}\n",
-                    to.as_code(),
-                    to.get_type().as_code(),
-                    from.get_type().as_code(),
-                    from.as_code()
-                )
-            }
-            Return(expr) => {
-                format!("  ret {} {}\n", expr.get_type().as_code(), expr.as_code())
-            }
-            Add(left, right, ans) => {
-                let ans = ans.as_code();
-                format!(
-                    "  {} = add {} {}, {}\n",
-                    ans,
-                    left.get_type().as_code(),
-                    left.as_code(),
-                    right.as_code()
-                )
-            }
-            Sub(left, right, ans) => {
-                let ans = ans.as_code();
-                format!(
-                    "  {} = sub {} {}, {}\n",
-                    ans,
-                    left.get_type().as_code(),
-                    left.as_code(),
-                    right.as_code()
-                )
-            }
-            Multi(left, right, ans) => {
-                let ans = ans.as_code();
-                format!(
-                    "  {} = mul {} {}, {}\n",
-                    ans,
-                    left.get_type().as_code(),
-                    left.as_code(),
-                    right.as_code()
-                )
-            }
-            Divide(left, right, ans) => {
-                let ans = ans.as_code();
-                format!(
-                    "  {} = sdiv {} {}, {}\n",
-                    ans,
-                    left.get_type().as_code(),
-                    left.as_code(),
-                    right.as_code()
-                )
-            }
-            FuncCall(sym, args, assigned) => {
-                let assigned = assigned.as_code();
+            Load(from, to) => format!(
+                "  {} = load {}, {}* {}\n",
+                to.as_code(),
+                to.type_as_code(),
+                from.type_as_code(),
+                from.as_code()
+            ),
+            Return(expr) => format!("  ret {} {}\n", expr.type_as_code(), expr.as_code()),
+            Add(l, r, ans) => format!(
+                "  {} = add {} {}, {}\n",
+                ans.as_code(),
+                l.type_as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Sub(l, r, ans) => format!(
+                "  {} = sub {} {}, {}\n",
+                ans.as_code(),
+                l.type_as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Multi(l, r, ans) => format!(
+                "  {} = mul {} {}, {}\n",
+                ans.as_code(),
+                l.type_as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Divide(l, r, ans) => format!(
+                "  {} = sdiv {} {}, {}\n",
+                ans.as_code(),
+                l.type_as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Compare(l, r, ans) => format!(
+                "  {} = icmp ne {} {}, {}\n",
+                ans.as_code(),
+                l.type_as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            FuncCall(name, args, to) => {
                 let arg_seq = args
                     .iter()
                     .map(|param| param.as_func_arg())
@@ -113,12 +107,108 @@ impl Code {
                     .join(", ");
                 format!(
                     "  {} = call {} @{}({})\n",
-                    assigned,
-                    sym.get_type().as_code(),
-                    sym.as_code(),
+                    to.as_code(),
+                    name.type_as_code(),
+                    name.as_code(),
                     arg_seq
                 )
             }
+            Label(label) => format!("{}:\n", label),
+            Branch(cond, t_label, f_label) => format!(
+                "  br i1 {}, label %{}, label %{}\n",
+                cond.as_code(),
+                t_label,
+                f_label
+            ),
         }
+    }
+}
+
+impl std::fmt::Display for Code {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Code::*;
+
+        match self {
+            EmptyLine => write!(f, "EmptyLine"),
+            FuncDefineOpen(sym, _) => write!(f, "Func {} {{", sym.as_code()),
+            FuncDefineClose => write!(f, "}}"),
+            Alloca(sym) => write!(f, "Alloca({})", sym.as_code()),
+            Store(to, val) => write!(f, "Store({}: {})", to.as_code(), val.as_code()),
+            Load(from, to) => write!(f, "Load({}: {})", to.as_code(), from.as_code()),
+            Return(val) => write!(f, "Returen({})", val.as_code()),
+            Add(l, r, ans) => write!(
+                f,
+                "Add({}: {} {} +)",
+                ans.as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Sub(l, r, ans) => write!(
+                f,
+                "Sub({}: {} {} +)",
+                ans.as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Multi(l, r, ans) => write!(
+                f,
+                "Multi({}: {} {} +)",
+                ans.as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Divide(l, r, ans) => write!(
+                f,
+                "Devide({}: {} {} +)",
+                ans.as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            Compare(l, r, ans) => write!(
+                f,
+                "Compare({}: {} {} !=",
+                ans.as_code(),
+                l.as_code(),
+                r.as_code()
+            ),
+            FuncCall(name, args, to) => {
+                let arg_seq = args
+                    .iter()
+                    .map(|param| param.as_code())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "Call({}: {}({})", to.as_code(), name.as_code(), arg_seq)
+            }
+            Label(label) => write!(f, "Label(`{}`)", label),
+            Branch(cond, t_label, f_label) => write!(
+                f,
+                "Branch({} ? `{}` : `{}`)",
+                cond.as_code(),
+                t_label,
+                f_label
+            ),
+        }
+    }
+}
+
+pub struct Assembly(pub Vec<Code>);
+
+impl Assembly {
+    pub fn to_assembly(&self) -> String {
+        self.0
+            .iter()
+            .map(|code| code.to_assembly())
+            .collect::<String>()
+    }
+}
+
+impl std::fmt::Display for Assembly {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = self
+            .0
+            .iter()
+            .map(|code| format!("{}\n", code))
+            .collect::<String>();
+        write!(f, "{}", s)
     }
 }

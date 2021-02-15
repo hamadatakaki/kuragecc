@@ -7,33 +7,32 @@ use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, AST,
 };
 use super::token::literal::OperatorKind;
-use code::Code;
+use code::{Assembly, Code};
 use expression::{AsCode, Expression, ExpressionKind, Symbol, Value, ValueKind};
 use symbol_table::{FunctionTable, SymbolicTable, VariableTable};
 
 pub struct CodeGenerator {
     ast: AST,
-    codes: Vec<Code>,
+    code_stack: Vec<Code>,
     symbol_table: VariableTable,
     func_table: FunctionTable,
+    label_count: usize,
 }
 
 impl CodeGenerator {
     pub fn new(ast: AST) -> Self {
         Self {
             ast,
-            codes: Vec::new(),
+            code_stack: Vec::new(),
             symbol_table: VariableTable::new(),
             func_table: FunctionTable::new(),
+            label_count: 0,
         }
     }
 
-    pub fn gen_code(&mut self) -> String {
+    pub fn gen_assembly(&mut self) -> Assembly {
         self.gen_program(self.ast.clone());
-        self.codes
-            .iter()
-            .map(|code| code.to_assembly())
-            .collect::<String>()
+        Assembly(self.code_stack.clone())
     }
 
     fn gen_program(&mut self, ast: AST) {
@@ -61,19 +60,20 @@ impl CodeGenerator {
         for param in params.clone() {
             types.push(param.get_type());
         }
-        self.codes.push(Code::FuncDefineOpen(func, types.clone()));
+        self.code_stack
+            .push(Code::FuncDefineOpen(func, types.clone()));
 
         for (index, param) in params.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index), param.get_type()).to_expr();
             let ano = self.symbol_table.anonymous_symbol(param.get_type());
             let symbol = self.symbol_table.register(param.clone());
-            self.codes.push(Code::Alloca(ano.clone()));
-            self.codes.push(Code::Store(ano.clone(), arg));
-            self.codes.push(Code::Load(ano, symbol));
+            self.code_stack.push(Code::Alloca(ano.clone()));
+            self.code_stack.push(Code::Store(ano.clone(), arg));
+            self.code_stack.push(Code::Load(ano, symbol));
         }
 
         self.gen_stmts(stmts);
-        self.codes.push(Code::FuncDefineClose);
+        self.code_stack.push(Code::FuncDefineClose);
     }
 
     fn gen_stmts(&mut self, stmts: Vec<ASTStmt>) {
@@ -104,9 +104,9 @@ impl CodeGenerator {
             ExpressionKind::Value(val) => {
                 let ano = self.symbol_table.anonymous_symbol(val.get_type());
                 let symbol = self.symbol_table.register(id);
-                self.codes.push(Code::Alloca(ano.clone()));
-                self.codes.push(Code::Store(ano.clone(), expr));
-                self.codes.push(Code::Load(ano, symbol));
+                self.code_stack.push(Code::Alloca(ano.clone()));
+                self.code_stack.push(Code::Store(ano.clone(), expr));
+                self.code_stack.push(Code::Load(ano, symbol));
             }
             ExpressionKind::Symbol(symbol) => self
                 .symbol_table
@@ -129,9 +129,9 @@ impl CodeGenerator {
             ExpressionKind::Value(val) => {
                 let ano = self.symbol_table.anonymous_symbol(val.get_type());
                 let symbol = self.symbol_table.search_symbol(&id.get_name()).unwrap();
-                self.codes.push(Code::Alloca(ano.clone()));
-                self.codes.push(Code::Store(ano.clone(), expr));
-                self.codes.push(Code::Load(ano, symbol));
+                self.code_stack.push(Code::Alloca(ano.clone()));
+                self.code_stack.push(Code::Store(ano.clone(), expr));
+                self.code_stack.push(Code::Load(ano, symbol));
             }
             ExpressionKind::Symbol(symbol) => self
                 .symbol_table
@@ -144,11 +144,34 @@ impl CodeGenerator {
             ASTExprKind::Identifier(id) => self.gen_identifier(id),
             _ => self.gen_expr(expr),
         };
-        self.codes.push(Code::Return(ret))
+        self.code_stack.push(Code::Return(ret))
     }
 
-    fn gen_if(&mut self, expr: ASTExpr, t_stmts: Vec<ASTStmt>, f_stmts: Vec<ASTStmt>) {
-        unimplemented!();
+    fn gen_if(&mut self, cond: ASTExpr, t_stmts: Vec<ASTStmt>, f_stmts: Vec<ASTStmt>) {
+        let t_label = format!("true_label_{}", self.label_count);
+        let f_label = format!("false_label_{}", self.label_count);
+        self.label_count += 1;
+
+        // Compareを生成
+        let cond_expr = self.gen_expr(cond);
+        let zero_expr = Value::new(ValueKind::Int(0), Type::int()).to_expr();
+        let ans = self.symbol_table.anonymous_symbol(Type::int()); // TODO: LLVM IRとC言語の間で型にギャップが起こる.
+        let cmp_code = Code::Compare(cond_expr, zero_expr, ans.clone());
+        self.code_stack.push(cmp_code);
+
+        // 分岐を生成
+        let jump_code = Code::Branch(ans.to_expr(), t_label.clone(), f_label.clone());
+        self.code_stack.push(jump_code);
+
+        // true-labelを生成
+        self.code_stack.push(Code::EmptyLine);
+        self.code_stack.push(Code::Label(t_label));
+        self.gen_stmts(t_stmts);
+
+        // false-labelを生成
+        self.code_stack.push(Code::EmptyLine);
+        self.code_stack.push(Code::Label(f_label));
+        self.gen_stmts(f_stmts);
     }
 
     fn gen_identifier(&mut self, id: ASTIdentifier) -> Expression {
@@ -179,7 +202,7 @@ impl CodeGenerator {
 
                 let assigned = self.symbol_table.anonymous_symbol(sym.get_type());
                 let code = Code::FuncCall(sym, syms, assigned.clone());
-                self.codes.push(code);
+                self.code_stack.push(code);
                 assigned.to_expr()
             }
             Binary(left, right, ope) => {
@@ -197,7 +220,7 @@ impl CodeGenerator {
                     Devide => Divide(l, r, ans.clone()),
                     _ => unreachable!(),
                 };
-                self.codes.push(code);
+                self.code_stack.push(code);
                 ans.to_expr()
             }
             Unary(factor, ope) => match ope {
@@ -220,7 +243,7 @@ impl CodeGenerator {
                                 value.to_expr()
                             };
                             let code = Code::Multi(l, r, ans.clone());
-                            self.codes.push(code);
+                            self.code_stack.push(code);
                             ans.to_expr()
                         }
                     }
