@@ -28,7 +28,7 @@ impl VariableTable {
 
     pub fn variable_symbol(&mut self, name: &str, ty: Type) -> Symbol {
         self.val_count += 1;
-        let sym = format!("%val_{}_{}", name, self.val_count);
+        let sym = format!("%val_{}_{}", self.val_count, name);
         Symbol::new(sym, ty)
     }
 

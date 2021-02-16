@@ -3,6 +3,7 @@ int main() {
 
     if (c) {
         c =  c / 6;
+        int c = 1;
     } else {
         c =  c / 7;
     }

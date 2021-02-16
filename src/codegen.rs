@@ -68,7 +68,7 @@ impl CodeGenerator {
             let ano = self.symbol_table.anonymous_symbol(param.get_type());
             let symbol = self.symbol_table.register(param.clone());
             self.code_stack.push(Code::Alloca(ano.clone()));
-            self.code_stack.push(Code::Store(ano.clone(), arg));
+            self.code_stack.push(Code::Store(arg, ano.clone()));
             self.code_stack.push(Code::Load(ano, symbol));
         }
 
@@ -96,47 +96,24 @@ impl CodeGenerator {
     fn gen_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // Alloca(<name1>)
         // Store(<name1>, <integer>)
-        // Load(<name1>, <name2>)
 
-        let expr = self.gen_expr(expr);
-
-        match expr.clone().kind {
-            ExpressionKind::Value(val) => {
-                let ano = self.symbol_table.anonymous_symbol(val.get_type());
-                let symbol = self.symbol_table.register(id);
-                self.code_stack.push(Code::Alloca(ano.clone()));
-                self.code_stack.push(Code::Store(ano.clone(), expr));
-                self.code_stack.push(Code::Load(ano, symbol));
-            }
-            ExpressionKind::Symbol(symbol) => self
-                .symbol_table
-                .overwrite_name_and_symbol(id.get_name(), symbol),
-        }
+        self.gen_declare(id.clone());
+        self.gen_assign(id, expr);
     }
 
     fn gen_declare(&mut self, id: ASTIdentifier) {
-        self.symbol_table.register(id);
+        let symbol = self.symbol_table.register(id);
+        self.code_stack.push(Code::Alloca(symbol));
     }
 
     fn gen_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
         // Alloca(<name1>)
         // Store(<name1>, <integer>)
-        // Load(<name1>, <name2>)
 
-        let symbol = self.symbol_table.search_symbol(&id.get_name()).unwrap();
         let expr = self.gen_expr(expr);
+        let symbol = self.symbol_table.search_symbol(&id.get_name()).unwrap();
 
-        match expr.clone().kind {
-            ExpressionKind::Value(val) => {
-                let ano = self.symbol_table.anonymous_symbol(val.get_type());
-                self.code_stack.push(Code::Alloca(ano.clone()));
-                self.code_stack.push(Code::Store(ano.clone(), expr));
-                self.code_stack.push(Code::Load(ano, symbol));
-            }
-            ExpressionKind::Symbol(val) => {
-                self.code_stack.push(Code::Store(symbol, val.to_expr()));
-            }
-        }
+        self.code_stack.push(Code::Store(expr, symbol));
     }
 
     fn gen_return(&mut self, expr: ASTExpr) {
@@ -202,7 +179,11 @@ impl CodeGenerator {
 
     fn gen_identifier(&mut self, id: ASTIdentifier) -> Expression {
         match self.symbol_table.search_symbol(&id.get_name()) {
-            Some(sym) => sym.to_expr(),
+            Some(sym) => {
+                let ano = self.symbol_table.anonymous_symbol(sym.get_type());
+                self.code_stack.push(Code::Load(sym, ano.clone()));
+                ano.to_expr()
+            }
             None => unreachable!(),
         }
     }

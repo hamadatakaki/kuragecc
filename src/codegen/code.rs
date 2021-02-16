@@ -4,13 +4,13 @@ use super::expression::{AsCode, Expression, Symbol};
 
 #[derive(Debug, Clone)]
 pub enum Code {
-    EmptyLine, // 空行
+    EmptyLine,
     // function
     FuncDefineOpen(Symbol, Vec<Type>),
     FuncDefineClose,
     // declare, assign
     Alloca(Symbol),
-    Store(Symbol, Expression), // (to, stored-value)
+    Store(Expression, Symbol), // (value, store-to)
     Load(Symbol, Symbol),      // (from, to)
     // return
     Return(Expression),
@@ -50,7 +50,7 @@ impl Code {
             }
             FuncDefineClose => format!("}}\n\n"),
             Alloca(sym) => format!("  {} = alloca {}\n", sym.as_code(), sym.type_as_code()),
-            Store(sym, val) => format!(
+            Store(val, sym) => format!(
                 "  store {} {}, {}* {}\n",
                 val.type_as_code(),
                 val.as_code(),
