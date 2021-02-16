@@ -9,7 +9,7 @@ pub struct CustomType {
 pub enum Type {
     Primitive(PrimitiveType),
     Custom(CustomType),
-    // InvalidTypeError,
+    InvalidTypeError,
     NoneType,
 }
 
@@ -44,7 +44,8 @@ impl PartialEq for Type {
         match (self, other) {
             (&Primitive(ref p), &Primitive(ref q)) => p == q,
             (&Custom(ref c), &Custom(ref d)) => c == d,
-            (&NoneType, &NoneType) => true,
+            (&InvalidTypeError, _) => true,
+            (_, &InvalidTypeError) => true,
             _ => false,
         }
     }
@@ -61,7 +62,7 @@ impl std::fmt::Display for Type {
             Custom(custom) => {
                 write!(f, "{}", custom.name)
             }
-            // InvalidTypeError => write!(f, "<invalid-type-error-occured>"),
+            InvalidTypeError => write!(f, "<invalid-type-error-occured>"),
             NoneType => write!(f, "<none>"),
         }
     }

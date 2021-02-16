@@ -1,14 +1,17 @@
 use super::super::ast::types::Type;
-use super::super::ast::ASTIdentifier;
+use super::super::ast::{ASTIdentifier, AsSyntaxExpression};
 
 #[derive(Debug, Clone)]
 pub struct IdentifierInformation {
     id: ASTIdentifier,
+    pub new_id: ASTIdentifier,
 }
 
 impl IdentifierInformation {
-    pub fn new(id: ASTIdentifier) -> Self {
-        Self { id }
+    pub fn new(id: ASTIdentifier, cnt: usize) -> Self {
+        let new_id_name = format!("{}_{}", id.get_name(), cnt);
+        let new_id = ASTIdentifier::new(new_id_name, id.get_type(), id.get_loc());
+        Self { id, new_id }
     }
 
     pub fn has_same_name(&self, name: &String) -> bool {

@@ -96,15 +96,15 @@ fn compile(path: &str) {
 
     // Semantic Analyzer
     let mut analyzer = SemanticAnalyzer::new();
-    match analyzer.semantic_analyze(ast.clone()) {
+    let ast = match analyzer.semantic_analyze(ast.clone()) {
+        Ok(new_ast) => new_ast,
         Err(errors) => {
             for e in errors {
                 e.visualize_error(code.as_str());
             }
             return;
         }
-        _ => {}
-    }
+    };
 
     // Code Generator
     let mut generator = CodeGenerator::new(ast);
