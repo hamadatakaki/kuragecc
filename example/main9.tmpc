@@ -1,14 +1,10 @@
 int main() {
-    int d = 0;
-    int c = 1;
+    int c = 42;
 
-    if (d)
-        return 42;
-    else {
-        if (345) {
-            return c*10;
-        } else {
-            return c - 1;
-        }
+    if (c) {
+        c =  c / 6;
+    } else {
+        c =  c / 7;
     }
+    return c;
 }

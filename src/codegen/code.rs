@@ -24,7 +24,8 @@ pub enum Code {
     FuncCall(Symbol, Vec<Expression>, Symbol),
     // label
     Label(String),
-    // branch
+    // jump, branch
+    Jump(String),
     Branch(Expression, String, String),
 }
 
@@ -114,6 +115,7 @@ impl Code {
                 )
             }
             Label(label) => format!("{}:\n", label),
+            Jump(label) => format!("  br label %{}\n", label),
             Branch(cond, t_label, f_label) => format!(
                 "  br i1 {}, label %{}, label %{}\n",
                 cond.as_code(),
@@ -180,6 +182,7 @@ impl std::fmt::Display for Code {
                 write!(f, "Call({}: {}({})", to.as_code(), name.as_code(), arg_seq)
             }
             Label(label) => write!(f, "Label(`{}`)", label),
+            Jump(label) => write!(f, "Jump(`{}`)", label),
             Branch(cond, t_label, f_label) => write!(
                 f,
                 "Branch({} ? `{}` : `{}`)",
