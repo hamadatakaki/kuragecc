@@ -131,9 +131,9 @@ impl ASTBlock {
 
 #[derive(Debug, Clone)]
 pub struct AST {
-    pub program: Vec<ASTBlock>,
-    pub scope: i32,
-    pub location: Location,
+    program: Vec<ASTBlock>,
+    scope: i32,
+    location: Location,
 }
 
 impl AST {
@@ -144,6 +144,15 @@ impl AST {
             location,
         }
     }
+
+    pub fn program(&self) -> Vec<ASTBlock> {
+        self.program.clone()
+    }
+}
+
+pub trait HasSyntaxKind {
+    type Kind;
+    fn get_kind(&self) -> Self::Kind;
 }
 
 pub trait AsSyntaxExpression {
@@ -167,6 +176,13 @@ impl AsSyntaxExpression for ASTExpr {
     }
 }
 
+impl HasSyntaxKind for ASTExpr {
+    type Kind = ASTExprKind;
+    fn get_kind(&self) -> Self::Kind {
+        self.kind.clone()
+    }
+}
+
 impl AsSyntaxStatement for ASTStmt {
     fn get_scope(&self) -> i32 {
         self.scope
@@ -177,6 +193,13 @@ impl AsSyntaxStatement for ASTStmt {
     }
 }
 
+impl HasSyntaxKind for ASTStmt {
+    type Kind = ASTStmtKind;
+    fn get_kind(&self) -> Self::Kind {
+        self.kind.clone()
+    }
+}
+
 impl AsSyntaxStatement for ASTBlock {
     fn get_scope(&self) -> i32 {
         self.scope
@@ -184,6 +207,13 @@ impl AsSyntaxStatement for ASTBlock {
 
     fn get_loc(&self) -> Location {
         self.location
+    }
+}
+
+impl HasSyntaxKind for ASTBlock {
+    type Kind = ASTBlockKind;
+    fn get_kind(&self) -> Self::Kind {
+        self.kind.clone()
     }
 }
 

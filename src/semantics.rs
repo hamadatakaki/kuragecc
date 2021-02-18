@@ -4,16 +4,27 @@ pub mod identifier;
 use super::ast::types::Type;
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
-    AsSyntaxExpression, AsSyntaxStatement, AST,
+    AsSyntaxExpression, AsSyntaxStatement, HasSyntaxKind, AST,
 };
 use super::error::semantics::{SemanticError, SemanticErrorKind, SemanticResult};
 use super::token::literal::OperatorKind;
 use function::{FunctionInformation, FunctionManager};
-use identifier::{IdentifierInformation, IdentifierManager};
+use identifier::IdentifierManager;
+
+macro_rules! type_check {
+    ($actual_type: expr, $expected_type: expr) => {
+        if $actual_type != $expected_type {
+            let kind = SemanticErrorKind::TypeIsDifferent($actual_type, $expected_type);
+            // let error = SemanticError::new(kind, $loc);
+            Some(kind)
+        } else {
+            None
+        }
+    };
+}
 
 pub struct SemanticAnalyzer {
     var_manager: IdentifierManager,
-    var_count: usize,
     func_manager: FunctionManager,
     errors: Vec<SemanticError>,
 }
@@ -22,7 +33,6 @@ impl SemanticAnalyzer {
     pub fn new() -> Self {
         Self {
             var_manager: IdentifierManager::new(),
-            var_count: 0,
             func_manager: FunctionManager::new(),
             errors: Vec::new(),
         }
@@ -38,11 +48,10 @@ impl SemanticAnalyzer {
     //     self.func_manager.shallow_scope();
     // }
 
-    fn declare_new_variable(&mut self, id: ASTIdentifier) -> ASTIdentifier {
-        let info = IdentifierInformation::new(id, self.var_count);
-        self.var_count += 1;
+    fn declare_new_identifier(&mut self, id: ASTIdentifier) -> ASTIdentifier {
+        let info = self.var_manager.new_info(id.clone());
         self.var_manager.push_info(info.clone());
-        info.new_id
+        ASTIdentifier::new(info.verbose_name(), id.get_type(), id.get_loc())
     }
 
     pub fn semantic_analyze(&mut self, ast: AST) -> SemanticResult<AST> {
@@ -57,7 +66,7 @@ impl SemanticAnalyzer {
     fn semantic_analyze_program(&mut self, ast: AST) -> AST {
         let mut new_blocks = vec![];
 
-        for block in ast.clone().program {
+        for block in ast.program() {
             let new_block = self.semantic_analyze_block(block);
             new_blocks.push(new_block);
         }
@@ -66,7 +75,7 @@ impl SemanticAnalyzer {
     }
 
     fn semantic_analyze_block(&mut self, block: ASTBlock) -> ASTBlock {
-        let kind = match block.clone().kind {
+        let kind = match block.get_kind() {
             ASTBlockKind::Func(id, params, stmts) => self.semantic_analyze_func(id, params, stmts),
         };
         ASTBlock::new(kind, block.get_scope(), block.get_loc())
@@ -81,45 +90,45 @@ impl SemanticAnalyzer {
         // スコープを一段階深くし、関数引数のスコープを記憶
         self.var_manager.deepen_scope();
 
-        let mut analyzed_params = vec![];
+        let mut new_params = vec![];
 
-        for param in params.clone() {
-            let new_id = self.declare_new_variable(param);
-            analyzed_params.push(new_id);
+        for param in params {
+            let new_id = self.declare_new_identifier(param);
+            new_params.push(new_id);
         }
 
         // 関数名のスコープを記憶
-        let param_def = params
+        let param_def = new_params
             .iter()
-            .map(|id| id.get_type().clone())
+            .map(|param| param.get_type())
             .collect::<Vec<Type>>();
         let info = FunctionInformation::new(id.clone(), param_def);
         self.func_manager.push_info(info);
 
         // 関数定義内の解析
-        let stmts = self.semantic_analyze_comp_stmts(stmts.clone(), id.get_type());
+        let new_stmts = self.semantic_analyze_comp_stmts(stmts, id.get_type());
 
         // 関数のスコープから抜ける処理
         self.var_manager.shallow_scope();
 
-        ASTBlockKind::Func(id, analyzed_params, stmts)
+        ASTBlockKind::Func(id, new_params, new_stmts)
     }
 
     fn semantic_analyze_comp_stmts(&mut self, stmts: Vec<ASTStmt>, ret_ty: Type) -> Vec<ASTStmt> {
-        let mut analyzed_stmts = vec![];
+        let mut new_stmts = vec![];
 
         for stmt in stmts {
             let analyzed_stmt = self.semantic_analyze_stmt(stmt, ret_ty.clone());
-            analyzed_stmts.push(analyzed_stmt);
+            new_stmts.push(analyzed_stmt);
         }
 
-        analyzed_stmts
+        new_stmts
     }
 
     fn semantic_analyze_stmt(&mut self, stmt: ASTStmt, ret_ty: Type) -> ASTStmt {
         use ASTStmtKind::*;
 
-        let kind = match stmt.clone().kind {
+        let kind = match stmt.get_kind() {
             Assign(id, expr) => self.semantic_analyze_assign(id, expr),
             Declare(id) => self.semantic_analyze_declare(id),
             DeclareAssign(id, expr) => self.semantic_analyze_declare_and_assign(id, expr),
@@ -138,13 +147,13 @@ impl SemanticAnalyzer {
         match self.var_manager.search_name(&id) {
             Some(info) => {
                 // 該当の変数があればtype-check
-                let id_type = info.get_type();
-                if id_type != expr_type {
-                    let kind = SemanticErrorKind::TypeIsDifferent(id_type, expr_type);
-                    let error = SemanticError::new(kind, id.get_loc());
-                    self.errors.push(error);
-                }
-                ASTStmtKind::Assign(info.new_id, new_expr)
+                type_check!(info.get_type(), expr_type).map(|kind| {
+                    let e = SemanticError::new(kind, id.get_loc());
+                    self.errors.push(e);
+                });
+
+                let new_id = ASTIdentifier::new(info.verbose_name(), id.get_type(), id.get_loc());
+                ASTStmtKind::Assign(new_id, new_expr)
             }
             None => {
                 // 該当の変数がなければIdentifierIsNotDeclaredを吐く
@@ -157,7 +166,7 @@ impl SemanticAnalyzer {
     }
 
     fn semantic_analyze_declare(&mut self, id: ASTIdentifier) -> ASTStmtKind {
-        ASTStmtKind::Declare(self.declare_new_variable(id))
+        ASTStmtKind::Declare(self.declare_new_identifier(id))
     }
 
     fn semantic_analyze_declare_and_assign(
@@ -169,26 +178,24 @@ impl SemanticAnalyzer {
         let (new_expr, expr_type) = self.semantic_analyze_expr(expr.clone());
 
         // type-check
-        let id_type = id.get_type();
-        if id_type != expr_type {
-            let kind = SemanticErrorKind::TypeIsDifferent(id_type, expr_type);
-            let error = SemanticError::new(kind, id.get_loc());
-            self.errors.push(error)
-        }
+        type_check!(id.get_type(), expr_type).map(|kind| {
+            let e = SemanticError::new(kind, id.get_loc());
+            self.errors.push(e);
+        });
 
-        // 新たな変数名を追加
-        let new_id = self.declare_new_variable(id);
-
+        // idを解析
+        let new_id = self.declare_new_identifier(id);
         ASTStmtKind::DeclareAssign(new_id, new_expr)
     }
 
     fn semantic_analyze_return(&mut self, expr: ASTExpr, ret_ty: Type) -> ASTStmtKind {
         let (new_expr, expr_type) = self.semantic_analyze_expr(expr.clone());
-        if ret_ty != expr_type {
-            let kind = SemanticErrorKind::TypeIsDifferent(ret_ty, expr_type);
-            let error = SemanticError::new(kind, new_expr.get_loc());
-            self.errors.push(error);
-        }
+
+        // type-check
+        type_check!(ret_ty, expr_type).map(|kind| {
+            let e = SemanticError::new(kind, new_expr.get_loc());
+            self.errors.push(e);
+        });
 
         ASTStmtKind::Return(new_expr)
     }
@@ -201,16 +208,19 @@ impl SemanticAnalyzer {
         ret_ty: Type,
     ) -> ASTStmtKind {
         let (new_cond, cond_type) = self.semantic_analyze_expr(cond.clone());
-        // cond の型は int であるべき.
-        if cond_type != Type::int() {
-            let kind = SemanticErrorKind::TypeIsDifferent(cond_type, Type::int());
-            let error = SemanticError::new(kind, cond.get_loc());
-            self.errors.push(error)
-        }
 
+        // cond の型は int であるべき.
+        type_check!(cond_type, Type::int()).map(|kind| {
+            let e = SemanticError::new(kind, cond.get_loc());
+            self.errors.push(e);
+        });
+
+        // t_stmtsの解析
         self.var_manager.deepen_scope();
         let new_t_stmts = self.semantic_analyze_comp_stmts(t_stmts, ret_ty.clone());
         self.var_manager.shallow_scope();
+
+        // f_stmtsの解析
         self.var_manager.deepen_scope();
         let new_f_stmts = self.semantic_analyze_comp_stmts(f_stmts, ret_ty);
         self.var_manager.shallow_scope();
@@ -221,15 +231,16 @@ impl SemanticAnalyzer {
     fn semantic_analyze_expr(&mut self, expr: ASTExpr) -> (ASTExpr, Type) {
         use ASTExprKind::*;
 
-        let (kind, ty) = match expr.clone().kind {
+        let (kind, ty) = match expr.get_kind() {
             Binary(left, right, ope) => self.semantic_analyze_binary(*left, *right, ope),
             Unary(factor, ope) => self.semantic_analyze_unary(*factor, ope),
-            Integer(_) => (expr.clone().kind, Type::int()),
+            Integer(_) => (expr.get_kind(), Type::int()),
             Identifier(id) => self.semantic_analyze_identifier(id),
             FuncCall(id, args) => self.semantic_analyze_func_call(id, args),
         };
 
-        (ASTExpr::new(kind, expr.get_loc()), ty)
+        let new_expr = ASTExpr::new(kind, expr.get_loc());
+        (new_expr, ty)
     }
 
     fn semantic_analyze_binary(
@@ -248,7 +259,7 @@ impl SemanticAnalyzer {
             let loc = new_left.get_loc().extend_to(new_right.get_loc());
             let err = SemanticError::new(err_kind, loc);
             self.errors.push(err);
-            ty = Type::InvalidTypeError;
+            ty = Type::IgnoreType;
         }
 
         let kind = ASTExprKind::Binary(Box::new(new_left), Box::new(new_right), ope);
@@ -269,7 +280,7 @@ impl SemanticAnalyzer {
             let loc = new_factor.get_loc();
             let err = SemanticError::new(err_kind, loc);
             self.errors.push(err);
-            ty = Type::InvalidTypeError;
+            ty = Type::IgnoreType;
         }
 
         let kind = ASTExprKind::Unary(Box::new(new_factor), ope);
@@ -284,9 +295,13 @@ impl SemanticAnalyzer {
                 let kind = SemanticErrorKind::IdentifierIsNotDeclared(id.get_name());
                 let error = SemanticError::new(kind, id.get_loc());
                 self.errors.push(error);
-                (id, Type::NoneType)
+                (id, Type::IgnoreType)
             }
-            Some(info) => (info.new_id.clone(), info.new_id.get_type()),
+            Some(info) => {
+                let new_name = info.verbose_name();
+                let new_id = ASTIdentifier::new(new_name, info.get_type(), id.get_loc());
+                (new_id, info.get_type())
+            }
         };
 
         (ASTExprKind::Identifier(id), ty)
@@ -343,7 +358,7 @@ impl SemanticAnalyzer {
                 let kind = SemanticErrorKind::FunctionIsNotDefined(id.get_name());
                 let error = SemanticError::new(kind, id.get_loc());
                 self.errors.push(error);
-                (ASTExprKind::FuncCall(id, args), Type::NoneType)
+                (ASTExprKind::FuncCall(id, args), Type::IgnoreType)
             }
         }
     }

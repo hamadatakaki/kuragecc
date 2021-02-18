@@ -38,7 +38,7 @@ impl CodeGenerator {
     fn gen_program(&mut self, ast: AST) {
         // program -> block*
 
-        for block in ast.program {
+        for block in ast.program() {
             self.gen_block(block);
         }
     }

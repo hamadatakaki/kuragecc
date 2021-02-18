@@ -1,25 +1,40 @@
 use super::super::ast::types::Type;
 use super::super::ast::{ASTIdentifier, AsSyntaxExpression};
+use super::super::Location;
 
 #[derive(Debug, Clone)]
 pub struct IdentifierInformation {
-    id: ASTIdentifier,
-    pub new_id: ASTIdentifier,
+    name: String,
+    cnt: usize,
+    id_type: Type,
+    location: Location,
 }
 
+// name: String, id_type: Type, loc: Location
+
 impl IdentifierInformation {
-    pub fn new(id: ASTIdentifier, cnt: usize) -> Self {
-        let new_id_name = format!("{}_{}", id.get_name(), cnt);
-        let new_id = ASTIdentifier::new(new_id_name, id.get_type(), id.get_loc());
-        Self { id, new_id }
+    pub fn from_id(id: ASTIdentifier, cnt: usize) -> Self {
+        let name = id.get_name();
+        let id_type = id.get_type();
+        let location = id.get_loc();
+        Self {
+            name,
+            cnt,
+            id_type,
+            location,
+        }
+    }
+
+    pub fn verbose_name(&self) -> String {
+        format!("{}_{}", self.name, self.cnt)
     }
 
     pub fn has_same_name(&self, name: &String) -> bool {
-        self.id.get_name() == name.clone()
+        &self.name == name
     }
 
     pub fn get_type(&self) -> Type {
-        self.id.get_type()
+        self.id_type.clone()
     }
 }
 
@@ -27,6 +42,7 @@ impl IdentifierInformation {
 pub struct IdentifierManager {
     scope_table: Vec<usize>,
     info_stack: Vec<IdentifierInformation>,
+    var_count: usize,
 }
 
 impl IdentifierManager {
@@ -34,7 +50,14 @@ impl IdentifierManager {
         Self {
             scope_table: vec![0],
             info_stack: Vec::new(),
+            var_count: 0,
         }
+    }
+
+    pub fn new_info(&mut self, id: ASTIdentifier) -> IdentifierInformation {
+        let info = IdentifierInformation::from_id(id.clone(), self.var_count);
+        self.var_count += 1;
+        info
     }
 
     pub fn search_name(&mut self, id: &ASTIdentifier) -> Option<IdentifierInformation> {
@@ -58,7 +81,7 @@ impl IdentifierManager {
                 let s = self
                     .info_stack
                     .iter()
-                    .map(|info| info.id.get_name())
+                    .map(|info| info.name.clone())
                     .collect::<Vec<String>>()
                     .join(", ");
                 println!("{}", s);
