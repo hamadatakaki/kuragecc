@@ -23,6 +23,23 @@ macro_rules! type_check {
     };
 }
 
+macro_rules! type_check_func_param {
+    ($actual_type: expr, $expected_type: expr, $k: expr, $name: expr) => {
+        if $actual_type != $expected_type {
+            let kind = SemanticErrorKind::FunctionArgTypeIsDifferent(
+                $name,
+                $k,
+                $actual_type,
+                $expected_type,
+            );
+            // let error = SemanticError::new(kind, $loc);
+            Some(kind)
+        } else {
+            None
+        }
+    };
+}
+
 pub struct SemanticAnalyzer {
     var_manager: IdentifierManager,
     func_manager: FunctionManager,
@@ -37,16 +54,6 @@ impl SemanticAnalyzer {
             errors: Vec::new(),
         }
     }
-
-    // fn deepen_scope(&mut self) {
-    //     self.var_manager.deepen_scope();
-    //     self.func_manager.deepen_scope();
-    // }
-
-    // fn shallow_scope(&mut self) {
-    //     self.var_manager.shallow_scope();
-    //     self.func_manager.shallow_scope();
-    // }
 
     fn declare_new_identifier(&mut self, id: ASTIdentifier) -> ASTIdentifier {
         let info = self.var_manager.new_info(id.clone());
@@ -317,7 +324,24 @@ impl SemanticAnalyzer {
                 // 引数の数をチェック
                 let size = info.param_size();
                 let mut new_args: Vec<ASTExpr>;
-                if size != args.len() {
+                if size == args.len() {
+                    new_args = vec![];
+
+                    // 引数型のチェック
+                    for (k, (param_type, arg)) in info.param_def.iter().zip(args).enumerate() {
+                        let param_type = param_type.clone();
+                        let (new_arg, arg_type) = self.semantic_analyze_expr(arg);
+
+                        type_check_func_param!(arg_type, param_type, k, id.get_name()).map(
+                            |kind| {
+                                let e = SemanticError::new(kind, id.get_loc());
+                                self.errors.push(e);
+                            },
+                        );
+
+                        new_args.push(new_arg);
+                    }
+                } else {
                     let err_kind = SemanticErrorKind::DifferentNumbersArgsTaken(
                         id.get_name(),
                         args.len(),
@@ -327,28 +351,6 @@ impl SemanticAnalyzer {
                     self.errors.push(error);
 
                     new_args = args;
-                } else {
-                    new_args = vec![];
-
-                    // 引数型のチェック
-                    for (k, (param_type, arg)) in info.param_def.iter().zip(args).enumerate() {
-                        let param_type = param_type.clone();
-                        let (new_arg, arg_type) = self.semantic_analyze_expr(arg);
-
-                        if param_type != arg_type {
-                            // 引数型が不一致のエラー
-                            let kind = SemanticErrorKind::FunctionArgTypeIsDifferent(
-                                id.get_name(),
-                                k,
-                                arg_type,
-                                param_type,
-                            );
-                            let error = SemanticError::new(kind, id.get_loc());
-                            self.errors.push(error)
-                        }
-
-                        new_args.push(new_arg);
-                    }
                 };
 
                 let kind = ASTExprKind::FuncCall(id, new_args);

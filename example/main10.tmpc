@@ -1,0 +1,11 @@
+int main() {
+    int c = 42;
+
+    if (c) {
+        return c;
+    } else {
+        c = 37;
+    }
+
+    return c;
+}
