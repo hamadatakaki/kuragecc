@@ -13,23 +13,22 @@ use super::Location;
     type      -> primitive
 
     stmt  -> assign | declare | dec-ass | return | if
-    assign  -> identifier `=` cond `;`
+    assign  -> identifier `=` expr7 `;`
     declare -> type-id `;`
-    dec-ass -> type-id `=` cond `;`
-    return  -> `return` cond `;`
-    if      -> `if` `(` cond `)` stmt (`else` stmt)?
+    dec-ass -> type-id `=` expr7 `;`
+    return  -> `return` expr7 `;`
+    if      -> `if` `(` expr7 `)` stmt (`else` stmt)?
 
-    cond      -> expr cond'
-    cond'     -> (`==`|`!=`) expr cond' | epsilon
-    expr      -> term expr'
-    expr'     -> (`+`|`-`) term expr' | epsilon
-    term      -> unary term'
-    term'     -> (`*`|`/`) unary term' | epsilon
-    unary     -> (`+`|`-`) factor | factor
-    factor    -> `(` expr `)` | value
-    value     -> integer | identifier | call-func
+    expr7     -> expr4 expr7'   // equivalence
+    expr7'    -> (`==`|`!=`) expr4 expr7' | epsilon
+    expr4     -> expr3 expr4'   // addition
+    expr4'    -> (`+`|`-`) expr3 expr4' | epsilon
+    expr3     -> expr2 expr3'   // multiplication
+    expr3'    -> (`*`|`/`) expr2 expr3' | epsilon
+    expr2     -> (`+`|`-`)? factor
+    factor    -> `(` expr7 `)` | integer | identifier | call-func
     call-func -> identifier `(` arg-seq `)`
-    arg-seq   -> expr (`,` expr)* | epsilon
+    arg-seq   -> expr7 (`,` expr7)* | epsilon
 */
 
 #[derive(Debug, Clone)]
@@ -381,7 +380,9 @@ fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
             visualize_ast_expr(expr, i + 1);
         }
         If(expr, t_stmts, f_stmts) => {
-            println!("If <scope: {}> ({}):", stmt.scope, expr);
+            println!("If <scope: {}> :", stmt.scope);
+            visualize_ast_expr(expr, i + 1);
+            println!("{}If-Statement:", "  ".repeat(i));
             for stmt in t_stmts {
                 visualize_ast_stmt(stmt, i + 1);
             }
