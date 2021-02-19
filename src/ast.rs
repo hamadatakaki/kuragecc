@@ -13,12 +13,14 @@ use super::Location;
     type      -> primitive
 
     stmt  -> assign | declare | dec-ass | return | if
-    assign  -> identifier `=` expr `;`
+    assign  -> identifier `=` cond `;`
     declare -> type-id `;`
-    dec-ass -> type-id `=` expr `;`
-    return  -> `return` expr `;`
-    if      -> `if` `(` expr `)` stmt (`else` stmt)?
+    dec-ass -> type-id `=` cond `;`
+    return  -> `return` cond `;`
+    if      -> `if` `(` cond `)` stmt (`else` stmt)?
 
+    cond      -> expr cond'
+    cond'     -> (`==`|`!=`) expr cond' | epsilon
     expr      -> term expr'
     expr'     -> (`+`|`-`) term expr' | epsilon
     term      -> unary term'

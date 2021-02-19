@@ -242,7 +242,7 @@ impl Parser {
     }
 
     fn parse_assign(&mut self) -> ParserResult<ASTStmt> {
-        // assign -> identifier `=` expr `;`
+        // assign -> identifier `=` cond `;`
 
         // identifier の parse
         let id = self.parse_identifier()?;
@@ -258,7 +258,7 @@ impl Parser {
             }
         }
 
-        let expr = self.parse_expr()?;
+        let expr = self.parse_cond()?;
 
         // semicolon の parse
         let semicolon = self.look_and_forward_or_error()?;
@@ -303,7 +303,7 @@ impl Parser {
         }
 
         // expr の parse
-        let expr = self.parse_expr()?;
+        let expr = self.parse_cond()?;
 
         // semicolon の parse
         let semicolon = self.look_and_forward_or_error()?;
@@ -328,7 +328,7 @@ impl Parser {
         let ret = self.look_and_forward().unwrap();
 
         // expr の parse
-        let expr = self.parse_expr()?;
+        let expr = self.parse_cond()?;
 
         // semicolon の parse
         let semicolon = self.look_and_forward_or_error()?;
@@ -366,7 +366,7 @@ impl Parser {
             }
         }
 
-        let cond = self.parse_expr()?;
+        let cond = self.parse_cond()?;
 
         let normal_close = self.look_and_forward_or_error()?;
 
@@ -414,6 +414,29 @@ impl Parser {
         Ok(ASTStmt::new(kind, self.scope, loc))
     }
 
+    fn parse_cond(&mut self) -> ParserResult<ASTExpr> {
+        // cond -> expr cond'
+        let term = self.parse_expr()?;
+        self.parse_cond_prime(term)
+    }
+
+    fn parse_cond_prime(&mut self, cond_left: ASTExpr) -> ParserResult<ASTExpr> {
+        // cond'-> (`==`|`!=`) expr cond' | epsilon
+        let token = self.look_or_error()?;
+        match token.kind {
+            TokenKind::Operator(ope_kind) if ope_kind.priority().is_equivalence() => {
+                self.forward();
+                let expr = self.parse_expr()?;
+
+                let loc = cond_left.get_loc().extend_to(expr.get_loc());
+                let kind = ASTExprKind::Binary(Box::new(cond_left), Box::new(expr), ope_kind);
+                let expr = ASTExpr::new(kind, loc);
+
+                self.parse_expr_prime(expr)
+            }
+            _ => Ok(cond_left),
+        }
+    }
     fn parse_expr(&mut self) -> ParserResult<ASTExpr> {
         // expr -> term expr'
         let term = self.parse_term()?;
@@ -496,7 +519,7 @@ impl Parser {
 
     fn _parse_expr_enclosed_paren(&mut self) -> ParserResult<ASTExpr> {
         self.forward();
-        let expr = self.parse_expr()?;
+        let expr = self.parse_cond()?;
 
         let close_token = self.look_and_forward_or_error()?;
         match close_token.kind {
@@ -605,7 +628,7 @@ impl Parser {
         // arg-seq -> expr (`,` expr)* | epsilon
 
         let mut v = vec![];
-        if let Ok(value) = self.parse_expr() {
+        if let Ok(value) = self.parse_cond() {
             v.push(value);
             let mut token: Token;
             loop {
@@ -614,7 +637,7 @@ impl Parser {
                     TokenKind::Delimiter(delimiter) if delimiter.is_literal(',') => self.forward(),
                     _ => break,
                 };
-                let value = self.parse_expr()?;
+                let value = self.parse_cond()?;
                 v.push(value);
             }
         }

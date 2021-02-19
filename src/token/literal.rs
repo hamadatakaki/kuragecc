@@ -177,10 +177,10 @@ impl TerminalSymbol for ParenKind {
         }
     }
 }
-
 pub enum OperatorPriority {
     Addition,
     Multiplication,
+    Equivalence,
     Assignment,
 }
 
@@ -198,6 +198,13 @@ impl OperatorPriority {
             _ => false,
         }
     }
+
+    pub fn is_equivalence(&self) -> bool {
+        match self {
+            OperatorPriority::Equivalence => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -207,6 +214,8 @@ pub enum OperatorKind {
     Times,
     Devide,
     Assign,
+    Equal,
+    NotEqual,
 }
 
 impl OperatorKind {
@@ -218,6 +227,7 @@ impl OperatorKind {
             Plus | Minus => Addition,
             Times | Devide => Multiplication,
             Assign => Assignment,
+            Equal | NotEqual => Equivalence,
         }
     }
 }
@@ -227,7 +237,7 @@ impl TerminalSymbol for OperatorKind {
 
     fn contains(literal: String) -> bool {
         match literal.as_str() {
-            "+" | "-" | "*" | "/" | "=" | "==" => true,
+            "+" | "-" | "*" | "/" | "=" | "!" | "==" | "!=" => true,
             _ => false,
         }
     }
@@ -241,6 +251,8 @@ impl TerminalSymbol for OperatorKind {
             "*" => Times,
             "/" => Devide,
             "=" => Assign,
+            "==" => Equal,
+            "!=" => NotEqual,
             _ => unreachable!(),
         }
     }
@@ -254,6 +266,8 @@ impl TerminalSymbol for OperatorKind {
             Times => "*",
             Devide => "/",
             Assign => "=",
+            Equal => "==",
+            NotEqual => "!=",
         };
         String::from(s)
     }

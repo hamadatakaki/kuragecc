@@ -1,0 +1,27 @@
+int f1(int c) {
+    int d;
+
+    if (c == 10) {
+        return 5;
+    } else {
+        d = 7;
+    }
+
+    return d;
+}
+
+int f2(int c) {
+    int d;
+
+    if (c != 10) {
+        return 5;
+    } else {
+        d = 7;
+    }
+
+    return d;
+}
+
+int main() {
+    return f1(10) * 10 + f2(10);
+}
