@@ -1,5 +1,5 @@
+use super::super::token::literal::OperatorKind;
 use super::super::types::Type;
-// use super::super::token::literal::OperatorKind;
 use super::expression::{AsCode, Expression, Symbol};
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub enum Code {
     Sub(Expression, Expression, Symbol),
     Multi(Expression, Expression, Symbol),
     Divide(Expression, Expression, Symbol),
-    Compare(Expression, Expression, Symbol),
+    Condition(Expression, Expression, OperatorKind, Symbol),
     // function calling: (name, args, to)
     FuncCall(Symbol, Vec<Expression>, Symbol),
     // label
@@ -98,13 +98,21 @@ impl Code {
                 l.as_code(),
                 r.as_code()
             ),
-            Compare(l, r, ans) => format!(
-                "  {} = icmp ne {} {}, {}\n",
+            Condition(l, r, ope, ans) => format!(
+                "  {} = icmp {} {} {}, {}\n",
                 ans.as_code(),
+                ope.as_code(),
                 l.type_as_code(),
                 l.as_code(),
                 r.as_code()
             ),
+            // NotEqual(l, r, ans) => format!(
+            //     "  {} = icmp ne {} {}, {}\n",
+            //     ans.as_code(),
+            //     l.type_as_code(),
+            //     l.as_code(),
+            //     r.as_code()
+            // ),
             FuncCall(name, args, to) => {
                 let arg_seq = args
                     .iter()
@@ -170,13 +178,15 @@ impl std::fmt::Display for Code {
                 l.as_code(),
                 r.as_code()
             ),
-            Compare(l, r, ans) => write!(
+            Condition(l, r, ope, ans) => write!(
                 f,
-                "Compare({}: {} {} !=",
+                "Compare({}: {} {} {:?})",
                 ans.as_code(),
                 l.as_code(),
-                r.as_code()
+                r.as_code(),
+                ope
             ),
+
             FuncCall(name, args, to) => {
                 let arg_seq = args
                     .iter()

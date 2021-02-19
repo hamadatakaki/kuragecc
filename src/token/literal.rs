@@ -230,6 +230,16 @@ impl OperatorKind {
             Equal | NotEqual => Equivalence,
         }
     }
+
+    pub fn as_code(&self) -> String {
+        use OperatorKind::*;
+        let s = match self {
+            Equal => "eq",
+            NotEqual => "ne",
+            _ => unimplemented!(),
+        };
+        format!("{}", s)
+    }
 }
 
 impl TerminalSymbol for OperatorKind {

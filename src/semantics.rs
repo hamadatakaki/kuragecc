@@ -216,6 +216,19 @@ impl SemanticAnalyzer {
     ) -> ASTStmtKind {
         let (new_cond, cond_type) = self.semantic_analyze_expr(cond.clone());
 
+        let new_cond = match new_cond.get_kind() {
+            ASTExprKind::Binary(_, _, ope) if ope.priority().is_equivalence() => new_cond,
+            _ => {
+                let zero = ASTExpr::new(ASTExprKind::Integer(0), new_cond.get_loc());
+                let kind = ASTExprKind::Binary(
+                    Box::new(new_cond.clone()),
+                    Box::new(zero),
+                    OperatorKind::NotEqual,
+                );
+                ASTExpr::new(kind, new_cond.get_loc())
+            }
+        };
+
         // cond の型は int であるべき.
         type_check!(cond_type, Type::int()).map(|kind| {
             let e = SemanticError::new(kind, cond.get_loc());

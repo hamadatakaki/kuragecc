@@ -3,7 +3,8 @@ pub mod expression;
 pub mod symbol_table;
 
 use super::ast::{
-    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, AST,
+    ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
+    HasSyntaxKind, AST,
 };
 use super::token::literal::OperatorKind;
 use super::types::Type;
@@ -65,7 +66,6 @@ impl CodeGenerator {
 
         for (index, param) in params.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index), param.get_type()).to_expr();
-            // let ano = self.symbol_table.anonymous_symbol(param.get_type());
             let symbol = self.symbol_table.register(param.clone());
             self.code_stack.push(Code::Alloca(symbol.clone()));
             self.code_stack.push(Code::Store(arg, symbol));
@@ -79,23 +79,22 @@ impl CodeGenerator {
         // stmts -> stmt*
         // stmt -> assign | declare | dec-ass | return
 
-        for stmt in stmts {
+        let l = stmts.len() - 1;
+
+        for (k, stmt) in stmts.iter().enumerate() {
             use ASTStmtKind::*;
 
-            match stmt.clone().kind {
+            match stmt.get_kind() {
                 Assign(id, expr) => self.gen_assign(id, expr),
                 Declare(id) => self.gen_declare(id),
                 DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
                 Return(expr) => self.gen_return(expr),
-                If(expr, t_stmts, f_stmts) => self.gen_if(expr, t_stmts, f_stmts),
+                If(expr, t_stmts, f_stmts) => self.gen_if(expr, t_stmts, f_stmts, k < l),
             }
         }
     }
 
     fn gen_declare_and_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
-        // Alloca(<name1>)
-        // Store(<name1>, <integer>)
-
         self.gen_declare(id.clone());
         self.gen_assign(id, expr);
     }
@@ -106,9 +105,6 @@ impl CodeGenerator {
     }
 
     fn gen_assign(&mut self, id: ASTIdentifier, expr: ASTExpr) {
-        // Alloca(<name1>)
-        // Store(<name1>, <integer>)
-
         let expr = self.gen_expr(expr);
         let symbol = self.symbol_table.search_symbol(&id.get_name()).unwrap();
 
@@ -123,7 +119,13 @@ impl CodeGenerator {
         self.code_stack.push(Code::Return(ret))
     }
 
-    fn gen_if(&mut self, cond: ASTExpr, t_stmts: Vec<ASTStmt>, f_stmts: Vec<ASTStmt>) {
+    fn gen_if(
+        &mut self,
+        cond: ASTExpr,
+        t_stmts: Vec<ASTStmt>,
+        f_stmts: Vec<ASTStmt>,
+        has_continue: bool,
+    ) {
         let t_label = format!("true_label_{}", self.label_count);
         let f_label = format!("false_label_{}", self.label_count);
         let continue_label = format!("continue_label_{}", self.label_count);
@@ -131,10 +133,21 @@ impl CodeGenerator {
         self.label_count += 1;
 
         // Compareを生成
-        let cond_expr = self.gen_expr(cond);
-        let zero_expr = Value::new(ValueKind::Int(0), Type::int()).to_expr();
+        use ASTExprKind::*;
         let ans = self.symbol_table.anonymous_symbol(Type::int()); // TODO: LLVM IRとC言語の間で型にギャップが起こる.
-        let cmp_code = Code::Compare(cond_expr, zero_expr, ans.clone());
+        let cmp_code = match cond.get_kind() {
+            Binary(l, r, ope) => {
+                let l_expr = self.gen_expr(*l);
+                let r_expr = self.gen_expr(*r);
+                Code::Condition(l_expr, r_expr, ope, ans.clone())
+            }
+            _ => {
+                let cond_expr = self.gen_expr(cond);
+                let zero_expr = Value::new(ValueKind::Int(0), Type::int()).to_expr();
+                Code::Condition(cond_expr, zero_expr, OperatorKind::NotEqual, ans.clone())
+            }
+        };
+
         self.code_stack.push(cmp_code);
 
         // 分岐を生成
@@ -164,7 +177,9 @@ impl CodeGenerator {
         }
 
         // 後続部分を生成
-        self.code_stack.push(Code::Label(continue_label));
+        if has_continue {
+            self.code_stack.push(Code::Label(continue_label));
+        }
     }
 
     fn gen_expr(&mut self, expr: ASTExpr) -> Expression {
@@ -212,7 +227,6 @@ impl CodeGenerator {
     }
 
     fn gen_binary(&mut self, l: ASTExpr, r: ASTExpr, ope: OperatorKind) -> Expression {
-        use Code::*;
         use OperatorKind::*;
 
         let l = self.gen_expr(l);
@@ -220,10 +234,11 @@ impl CodeGenerator {
         let ty = l.get_type();
         let ans = self.symbol_table.anonymous_symbol(ty);
         let code = match ope {
-            Plus => Add(l, r, ans.clone()),
-            Minus => Sub(l, r, ans.clone()),
-            Times => Multi(l, r, ans.clone()),
-            Devide => Divide(l, r, ans.clone()),
+            Plus => Code::Add(l, r, ans.clone()),
+            Minus => Code::Sub(l, r, ans.clone()),
+            Times => Code::Multi(l, r, ans.clone()),
+            Devide => Code::Divide(l, r, ans.clone()),
+            Equal | NotEqual => Code::Condition(l, r, ope, ans.clone()),
             _ => unreachable!(),
         };
         self.code_stack.push(code);
