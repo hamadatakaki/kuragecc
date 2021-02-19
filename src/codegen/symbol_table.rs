@@ -1,5 +1,5 @@
-use super::super::ast::types::Type;
 use super::super::ast::ASTIdentifier;
+use super::super::types::Type;
 use super::expression::Symbol;
 
 use std::collections::HashMap;

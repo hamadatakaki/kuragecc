@@ -1,4 +1,4 @@
-use super::super::ast::types::Type;
+use super::super::types::Type;
 use super::super::Location;
 use super::{CompileTimeError, HasReason, VisualizeError};
 

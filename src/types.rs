@@ -1,4 +1,4 @@
-use super::super::token::literal::{PrimitiveType, TerminalSymbol};
+use super::token::literal::{PrimitiveType, TerminalSymbol};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CustomType {

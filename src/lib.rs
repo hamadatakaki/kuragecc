@@ -5,6 +5,7 @@ pub mod lexer;
 pub mod parser;
 pub mod semantics;
 pub mod token;
+pub mod types;
 
 trait Inspector {
     type Yielded;

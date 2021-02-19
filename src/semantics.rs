@@ -1,13 +1,13 @@
 pub mod function;
 pub mod identifier;
 
-use super::ast::types::Type;
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
     AsSyntaxExpression, AsSyntaxStatement, HasSyntaxKind, AST,
 };
 use super::error::semantics::{SemanticError, SemanticErrorKind, SemanticResult};
 use super::token::literal::OperatorKind;
+use super::types::Type;
 use function::{FunctionInformation, FunctionManager};
 use identifier::IdentifierManager;
 

@@ -1,5 +1,5 @@
-use super::super::ast::types::Type;
 use super::super::ast::{ASTIdentifier, AsSyntaxExpression};
+use super::super::types::Type;
 use super::super::Location;
 
 #[derive(Debug, Clone)]

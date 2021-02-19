@@ -1,4 +1,3 @@
-use super::ast::types::Type;
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
     AsSyntaxExpression, AsSyntaxStatement, AST,
@@ -6,6 +5,7 @@ use super::ast::{
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
+use super::types::Type;
 use super::Inspector;
 use super::Location;
 
@@ -388,11 +388,11 @@ impl Parser {
             _ => vec![self.parse_stmt()?],
         };
 
-        let res_else = self.look_or_error()?;
+        let res_else = self.look_and_forward_or_error()?;
 
         match res_else.kind {
             // `else` なら forward だけして pass
-            TokenKind::Reserved(res) if res.is_literal(format!("else")) => self.forward(),
+            TokenKind::Reserved(res) if res.is_literal(format!("else")) => {}
             _ => {
                 // `else` じゃなければ f_stmts は empty
                 let kind = ASTStmtKind::If(cond, t_stmts, vec![]);

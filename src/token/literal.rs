@@ -227,7 +227,7 @@ impl TerminalSymbol for OperatorKind {
 
     fn contains(literal: String) -> bool {
         match literal.as_str() {
-            "+" | "-" | "*" | "/" | "=" => true,
+            "+" | "-" | "*" | "/" | "=" | "==" => true,
             _ => false,
         }
     }

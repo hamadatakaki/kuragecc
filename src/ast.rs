@@ -1,8 +1,6 @@
-pub mod types;
-
 use super::token::literal::{OperatorKind, TerminalSymbol};
+use super::types::Type;
 use super::Location;
-use types::Type;
 
 /*
     program -> block*

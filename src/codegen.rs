@@ -2,11 +2,11 @@ pub mod code;
 pub mod expression;
 pub mod symbol_table;
 
-use super::ast::types::Type;
 use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind, AST,
 };
 use super::token::literal::OperatorKind;
+use super::types::Type;
 use code::{Assembly, Code};
 use expression::{AsCode, Expression, ExpressionKind, Symbol, Value, ValueKind};
 use symbol_table::{FunctionTable, SymbolicTable, VariableTable};
@@ -65,11 +65,10 @@ impl CodeGenerator {
 
         for (index, param) in params.iter().enumerate() {
             let arg = Symbol::new(format!("%{}", index), param.get_type()).to_expr();
-            let ano = self.symbol_table.anonymous_symbol(param.get_type());
+            // let ano = self.symbol_table.anonymous_symbol(param.get_type());
             let symbol = self.symbol_table.register(param.clone());
-            self.code_stack.push(Code::Alloca(ano.clone()));
-            self.code_stack.push(Code::Store(arg, ano.clone()));
-            self.code_stack.push(Code::Load(ano, symbol));
+            self.code_stack.push(Code::Alloca(symbol.clone()));
+            self.code_stack.push(Code::Store(arg, symbol));
         }
 
         self.gen_stmts(stmts);
@@ -143,19 +142,28 @@ impl CodeGenerator {
         self.code_stack.push(branch_code);
 
         // true-labelを生成
-        self.code_stack.push(Code::EmptyLine);
         self.code_stack.push(Code::Label(t_label));
         self.gen_stmts(t_stmts);
-        self.code_stack.push(jump_code.clone());
+        let jump_cond = !self
+            .code_stack
+            .last()
+            .map_or(false, |last| last.is_return());
+        if jump_cond {
+            self.code_stack.push(jump_code.clone());
+        }
 
         // false-labelを生成
-        self.code_stack.push(Code::EmptyLine);
         self.code_stack.push(Code::Label(f_label));
         self.gen_stmts(f_stmts);
-        self.code_stack.push(jump_code);
+        let jump_cond = !self
+            .code_stack
+            .last()
+            .map_or(false, |last| last.is_return());
+        if jump_cond {
+            self.code_stack.push(jump_code);
+        }
 
         // 後続部分を生成
-        self.code_stack.push(Code::EmptyLine);
         self.code_stack.push(Code::Label(continue_label));
     }
 

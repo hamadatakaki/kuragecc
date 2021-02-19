@@ -1,10 +1,9 @@
-use super::super::ast::types::Type;
+use super::super::types::Type;
 // use super::super::token::literal::OperatorKind;
 use super::expression::{AsCode, Expression, Symbol};
 
 #[derive(Debug, Clone)]
 pub enum Code {
-    EmptyLine,
     // function
     FuncDefineOpen(Symbol, Vec<Type>),
     FuncDefineClose,
@@ -30,11 +29,17 @@ pub enum Code {
 }
 
 impl Code {
+    pub fn is_return(&self) -> bool {
+        match self {
+            Code::Return(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_assembly(&self) -> String {
         use Code::*;
 
         match self {
-            EmptyLine => format!("\n"),
             FuncDefineOpen(sym, params) => {
                 let param_seq = params
                     .iter()
@@ -114,7 +119,7 @@ impl Code {
                     arg_seq
                 )
             }
-            Label(label) => format!("{}:\n", label),
+            Label(label) => format!("\n{}:\n", label),
             Jump(label) => format!("  br label %{}\n", label),
             Branch(cond, t_label, f_label) => format!(
                 "  br i1 {}, label %{}, label %{}\n",
@@ -131,7 +136,6 @@ impl std::fmt::Display for Code {
         use Code::*;
 
         match self {
-            EmptyLine => write!(f, "EmptyLine"),
             FuncDefineOpen(sym, _) => write!(f, "Func {} {{", sym.as_code()),
             FuncDefineClose => write!(f, "}}"),
             Alloca(sym) => write!(f, "Alloca({})", sym.as_code()),

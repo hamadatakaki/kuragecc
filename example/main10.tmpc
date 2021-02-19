@@ -1,11 +1,23 @@
-int main() {
-    int c = 42;
+int f1(int c) {
+    int d;
 
     if (c) {
-        return c;
+        return 5;
     } else {
-        c = 37;
+        d = 7;
     }
 
-    return c;
+    return d;
+}
+
+int f2(int c) {
+    if (c) 
+        return 5;
+    }
+
+    return 7;
+}
+
+int main() {
+    return f1(1) * 1000 + f1(0) * 100 + f2(1) * 10 + f2(0);
 }
