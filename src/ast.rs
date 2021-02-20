@@ -17,7 +17,8 @@ use super::Location;
     declare -> type-id `;`
     dec-ass -> type-id `=` expr7 `;`
     return  -> `return` expr7 `;`
-    if      -> `if` `(` expr7 `)` stmt (`else` stmt)?
+    if      -> `if` `(` expr7 `)` (stmt | comp-stmt) (`else` (stmt | comp-stmt))?
+    while   -> `while` `(` expr7 `)` (stmt | comp-stmt)
 
     expr7     -> expr4 expr7'   // equivalence
     expr7'    -> (`==`|`!=`) expr4 expr7' | epsilon
@@ -87,6 +88,7 @@ pub enum ASTStmtKind {
     DeclareAssign(ASTIdentifier, ASTExpr),
     Return(ASTExpr),
     If(ASTExpr, Vec<ASTStmt>, Vec<ASTStmt>), // cond, true, false
+    While(ASTExpr, Vec<ASTStmt>),            // cond, stmts
 }
 
 #[derive(Debug, Clone)]
@@ -263,8 +265,8 @@ impl std::fmt::Display for ASTStmt {
             }
             Declare(id) => write!(f, "{}", id),
             Return(expr) => write!(f, "return {}", expr),
-            If(expr, t_stmts, f_stmts) => {
-                let mut lines = vec![format!("if({}){{", expr)];
+            If(cond, t_stmts, f_stmts) => {
+                let mut lines = vec![format!("if({}){{", cond)];
                 for line in t_stmts {
                     lines.push(format!("  {}\n", line));
                 }
@@ -279,6 +281,14 @@ impl std::fmt::Display for ASTStmt {
                     lines.push(format!("}}"));
                 }
 
+                write!(f, "{}", lines.join(""))
+            }
+            While(cond, stmts) => {
+                let mut lines = vec![format!("while({}){{", cond)];
+                for line in stmts {
+                    lines.push(format!("  {}\n", line));
+                }
+                lines.push(format!("}}"));
                 write!(f, "{}", lines.join(""))
             }
         }
@@ -379,9 +389,9 @@ fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
             println!("Return <scope: {}>:", stmt.scope);
             visualize_ast_expr(expr, i + 1);
         }
-        If(expr, t_stmts, f_stmts) => {
+        If(cond, t_stmts, f_stmts) => {
             println!("If <scope: {}> :", stmt.scope);
-            visualize_ast_expr(expr, i + 1);
+            visualize_ast_expr(cond, i + 1);
             println!("{}If-Statement:", "  ".repeat(i));
             for stmt in t_stmts {
                 visualize_ast_stmt(stmt, i + 1);
@@ -392,6 +402,14 @@ fn visualize_ast_stmt(stmt: ASTStmt, i: usize) {
                 for stmt in f_stmts {
                     visualize_ast_stmt(stmt, i + 1);
                 }
+            }
+        }
+        While(cond, stmts) => {
+            println!("While <scope: {}> :", stmt.scope);
+            visualize_ast_expr(cond, i + 1);
+            println!("{}While-Statement:", "  ".repeat(i));
+            for stmt in stmts {
+                visualize_ast_stmt(stmt, i + 1);
             }
         }
     }

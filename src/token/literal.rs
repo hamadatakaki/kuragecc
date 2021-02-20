@@ -63,6 +63,7 @@ pub enum ReservedLiteral {
     Return,
     If,
     Else,
+    While,
 }
 
 impl TerminalSymbol for ReservedLiteral {
@@ -70,7 +71,7 @@ impl TerminalSymbol for ReservedLiteral {
 
     fn contains(literal: String) -> bool {
         match literal.as_str() {
-            "return" | "if" | "else" => true,
+            "return" | "if" | "else" | "while" => true,
             _ => false,
         }
     }
@@ -80,6 +81,7 @@ impl TerminalSymbol for ReservedLiteral {
             "return" => ReservedLiteral::Return,
             "if" => ReservedLiteral::If,
             "else" => ReservedLiteral::Else,
+            "while" => ReservedLiteral::While,
             _ => unreachable!(),
         }
     }
@@ -89,6 +91,7 @@ impl TerminalSymbol for ReservedLiteral {
             ReservedLiteral::Return => "return",
             ReservedLiteral::If => "if",
             ReservedLiteral::Else => "else",
+            ReservedLiteral::While => "while",
         };
         String::from(s)
     }

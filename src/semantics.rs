@@ -122,7 +122,8 @@ impl SemanticAnalyzer {
             Declare(id) => self.semantic_analyze_declare(id),
             DeclareAssign(id, expr) => self.semantic_analyze_declare_and_assign(id, expr),
             Return(expr) => self.semantic_analyze_return(expr, ret_ty),
-            If(expr, t_stmts, f_stmts) => self.semantic_analyze_if(expr, t_stmts, f_stmts, ret_ty),
+            If(cond, t_stmts, f_stmts) => self.semantic_analyze_if(cond, t_stmts, f_stmts, ret_ty),
+            While(cond, stmts) => self.semantic_analyze_while(cond, stmts, ret_ty),
         };
 
         ASTStmt::new(kind, stmt.get_scope(), stmt.get_loc())
@@ -229,6 +230,43 @@ impl SemanticAnalyzer {
 
         ASTStmtKind::If(new_cond, new_t_stmts, new_f_stmts)
     }
+
+    fn semantic_analyze_while(
+        &mut self,
+        cond: ASTExpr,
+        stmts: Vec<ASTStmt>,
+        ret_ty: Type,
+    ) -> ASTStmtKind {
+        let (new_cond, cond_type) = self.semantic_analyze_expr(cond.clone());
+
+        let new_cond = match new_cond.get_kind() {
+            ASTExprKind::Binary(_, _, ope) if ope.is_equivalence() => new_cond,
+            _ => {
+                let zero = ASTExpr::new(ASTExprKind::Integer(0), new_cond.get_loc());
+                let kind = ASTExprKind::Binary(
+                    Box::new(new_cond.clone()),
+                    Box::new(zero),
+                    Operator::NotEqual,
+                );
+                ASTExpr::new(kind, new_cond.get_loc())
+            }
+        };
+
+        // cond の型は int であるべき.
+        type_check!(cond_type, Type::int()).map(|kind| {
+            let e = SemanticError::new(kind, cond.get_loc());
+            self.errors.push(e);
+        });
+
+        // stmtsの解析
+        self.var_manager.deepen_scope();
+        let new_stmts = self.semantic_analyze_comp_stmts(stmts, ret_ty.clone());
+        self.var_manager.shallow_scope();
+
+        ASTStmtKind::While(new_cond, new_stmts)
+    }
+
+    // expression
 
     fn semantic_analyze_expr(&mut self, expr: ASTExpr) -> (ASTExpr, Type) {
         use ASTExprKind::*;

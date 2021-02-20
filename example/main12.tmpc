@@ -1,0 +1,13 @@
+int f1(int c) {
+    int s = c;
+    int i = 0;
+    while(i != 10) {
+        s = s + i;
+        i = i + 1;
+    }
+    return s;
+}
+
+int main() {
+    return f1(0);
+}

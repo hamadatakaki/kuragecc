@@ -231,6 +231,7 @@ impl Parser {
             Primitive(_) => self._parse_declare_or_dec_ass(),
             Reserved(res) if res.is_literal(format!("return")) => self.parse_return(),
             Reserved(res) if res.is_literal(format!("if")) => self.parse_if(),
+            Reserved(res) if res.is_literal(format!("while")) => self.parse_while(),
             _ => {
                 let error = ParserError::expected_token(
                     token.to_string(),
@@ -412,6 +413,54 @@ impl Parser {
         let kind = ASTStmtKind::If(cond, t_stmts, f_stmts);
         let end_loc = self.look_prev().unwrap().location;
         let loc = res_if.location.extend_to(end_loc);
+        Ok(ASTStmt::new(kind, self.scope, loc))
+    }
+
+    fn parse_while(&mut self) -> ParserResult<ASTStmt> {
+        // while -> `while` `(` expr7 `)` (stmt | comp-stmt)
+
+        // if の parse
+        let res_while = self.look_and_forward().unwrap();
+
+        let normal_open = self.look_and_forward_or_error()?;
+
+        match normal_open.kind {
+            TokenKind::Paren(paren) if paren.is_literal('(') => {}
+            _ => {
+                let error = ParserError::expected_token(
+                    normal_open.to_string(),
+                    String::from("("),
+                    normal_open.location,
+                );
+                return Err(error);
+            }
+        }
+
+        let cond = self.parse_expr()?;
+
+        let normal_close = self.look_and_forward_or_error()?;
+
+        match normal_close.kind {
+            TokenKind::Paren(paren) if paren.is_literal(')') => {}
+            _ => {
+                let error = ParserError::expected_token(
+                    normal_close.to_string(),
+                    String::from(")"),
+                    normal_close.location,
+                );
+                return Err(error);
+            }
+        }
+
+        let token = self.look_or_error()?;
+        let stmts = match token.clone().kind {
+            TokenKind::Paren(paren) if paren.is_literal('{') => self.parse_comp_stmt()?,
+            _ => vec![self.parse_stmt()?],
+        };
+
+        let kind = ASTStmtKind::While(cond, stmts);
+        let end_loc = self.look_prev().unwrap().location;
+        let loc = res_while.location.extend_to(end_loc);
         Ok(ASTStmt::new(kind, self.scope, loc))
     }
 

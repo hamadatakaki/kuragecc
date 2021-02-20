@@ -89,7 +89,8 @@ impl CodeGenerator {
                 Declare(id) => self.gen_declare(id),
                 DeclareAssign(id, expr) => self.gen_declare_and_assign(id, expr),
                 Return(expr) => self.gen_return(expr),
-                If(expr, t_stmts, f_stmts) => self.gen_if(expr, t_stmts, f_stmts, k < l),
+                If(cond, t_stmts, f_stmts) => self.gen_if(cond, t_stmts, f_stmts, k < l),
+                While(cond, stmts) => self.gen_while(cond, stmts, k < l),
             }
         }
     }
@@ -126,33 +127,12 @@ impl CodeGenerator {
         f_stmts: Vec<ASTStmt>,
         has_continue: bool,
     ) {
-        let t_label = format!("true_label_{}", self.label_count);
-        let f_label = format!("false_label_{}", self.label_count);
-        let continue_label = format!("continue_label_{}", self.label_count);
-        let jump_code = Code::Jump(continue_label.clone());
+        let t_label = format!("true_{}", self.label_count);
+        let f_label = format!("false_{}", self.label_count);
+        let continue_label = format!("continue_{}", self.label_count);
         self.label_count += 1;
 
-        // Compareを生成
-        use ASTExprKind::*;
-        let ans = self.symbol_table.anonymous_symbol(Type::int()); // TODO: LLVM IRとC言語の間で型にギャップが起こる.
-        let cmp_code = match cond.get_kind() {
-            Binary(l, r, ope) => {
-                let l_expr = self.gen_expr(*l);
-                let r_expr = self.gen_expr(*r);
-                Code::Condition(l_expr, r_expr, ope, ans.clone())
-            }
-            _ => {
-                let cond_expr = self.gen_expr(cond);
-                let zero_expr = Value::new(ValueKind::Int(0), Type::int()).to_expr();
-                Code::Condition(cond_expr, zero_expr, Operator::NotEqual, ans.clone())
-            }
-        };
-
-        self.code_stack.push(cmp_code);
-
-        // 分岐を生成
-        let branch_code = Code::Branch(ans.to_expr(), t_label.clone(), f_label.clone());
-        self.code_stack.push(branch_code);
+        self._gen_cmp_and_br(cond, t_label.clone(), f_label.clone());
 
         // true-labelを生成
         self.code_stack.push(Code::Label(t_label));
@@ -162,7 +142,7 @@ impl CodeGenerator {
             .last()
             .map_or(false, |last| last.is_return());
         if jump_cond {
-            self.code_stack.push(jump_code.clone());
+            self.code_stack.push(Code::Jump(continue_label.clone()));
         }
 
         // false-labelを生成
@@ -173,7 +153,7 @@ impl CodeGenerator {
             .last()
             .map_or(false, |last| last.is_return());
         if jump_cond {
-            self.code_stack.push(jump_code);
+            self.code_stack.push(Code::Jump(continue_label.clone()));
         }
 
         // 後続部分を生成
@@ -181,6 +161,48 @@ impl CodeGenerator {
             self.code_stack.push(Code::Label(continue_label));
         }
     }
+
+    fn gen_while(&mut self, cond: ASTExpr, stmts: Vec<ASTStmt>, has_continue: bool) {
+        let label = format!("while_{}", self.label_count);
+        let continue_label = format!("continue_{}", self.label_count);
+        self.label_count += 1;
+
+        self._gen_cmp_and_br(cond.clone(), label.clone(), continue_label.clone());
+
+        // true-labelを生成
+        self.code_stack.push(Code::Label(label.clone()));
+        self.gen_stmts(stmts);
+
+        // くりかえし部分を生成
+        self._gen_cmp_and_br(cond, label.clone(), continue_label.clone());
+
+        // 後続部分を生成
+        if has_continue {
+            self.code_stack.push(Code::Label(continue_label));
+        }
+    }
+
+    fn _gen_cmp_and_br(&mut self, cond: ASTExpr, t_label: String, f_label: String) {
+        use ASTExprKind::*;
+
+        // Compareを生成
+        let ans = self.symbol_table.anonymous_symbol(Type::int()); // TODO: LLVM IRとC言語の間で型にギャップが起こる.
+        let cmp_code = match cond.get_kind() {
+            Binary(l, r, ope) => {
+                let l_expr = self.gen_expr(*l);
+                let r_expr = self.gen_expr(*r);
+                Code::Condition(l_expr, r_expr, ope, ans.clone())
+            }
+            _ => unreachable!(),
+        };
+        self.code_stack.push(cmp_code);
+
+        // 分岐を生成
+        let br_code = Code::Branch(ans.to_expr(), t_label.clone(), f_label.clone());
+        self.code_stack.push(br_code);
+    }
+
+    // expression
 
     fn gen_expr(&mut self, expr: ASTExpr) -> Expression {
         use ASTExprKind::*;
