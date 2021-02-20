@@ -1,4 +1,4 @@
-use super::token::literal::{OperatorKind, TerminalSymbol};
+use super::operators::Operator;
 use super::types::Type;
 use super::Location;
 
@@ -58,8 +58,8 @@ impl ASTIdentifier {
 
 #[derive(Debug, Clone)]
 pub enum ASTExprKind {
-    Binary(Box<ASTExpr>, Box<ASTExpr>, OperatorKind),
-    Unary(Box<ASTExpr>, OperatorKind),
+    Binary(Box<ASTExpr>, Box<ASTExpr>, Operator),
+    Unary(Box<ASTExpr>, Operator),
     Identifier(ASTIdentifier),
     Integer(u32),
     FuncCall(ASTIdentifier, Vec<ASTExpr>),
@@ -237,8 +237,8 @@ impl std::fmt::Display for ASTExpr {
         use ASTExprKind::*;
 
         match &self.kind {
-            Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope.to_literal()),
-            Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope.to_literal()),
+            Binary(l, r, ope) => write!(f, "{} {} {}", *l, *r, ope),
+            Unary(factor, ope) => write!(f, "0 {} {}", *factor, ope),
             Identifier(name) => write!(f, "{}", name),
             Integer(n) => write!(f, "{}", n),
             FuncCall(name, args) => {
@@ -336,12 +336,12 @@ fn visualize_ast_expr(expr: ASTExpr, i: usize) {
 
     match expr.kind {
         Binary(l, r, ope) => {
-            println!("Binary {}:", ope.to_literal());
+            println!("Binary {}:", ope);
             visualize_ast_expr(*l, i + 1);
             visualize_ast_expr(*r, i + 1);
         }
         Unary(factor, ope) => {
-            println!("Unary {}:", ope.to_literal());
+            println!("Unary {}:", ope);
             visualize_ast_expr(*factor, i + 1);
         }
         Identifier(id) => println!("Identifier {}", id),

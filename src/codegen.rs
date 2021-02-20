@@ -6,7 +6,7 @@ use super::ast::{
     ASTBlock, ASTBlockKind, ASTExpr, ASTExprKind, ASTIdentifier, ASTStmt, ASTStmtKind,
     HasSyntaxKind, AST,
 };
-use super::token::literal::OperatorKind;
+use super::operators::Operator;
 use super::types::Type;
 use code::{Assembly, Code};
 use expression::{AsCode, Expression, ExpressionKind, Symbol, Value, ValueKind};
@@ -144,7 +144,7 @@ impl CodeGenerator {
             _ => {
                 let cond_expr = self.gen_expr(cond);
                 let zero_expr = Value::new(ValueKind::Int(0), Type::int()).to_expr();
-                Code::Condition(cond_expr, zero_expr, OperatorKind::NotEqual, ans.clone())
+                Code::Condition(cond_expr, zero_expr, Operator::NotEqual, ans.clone())
             }
         };
 
@@ -226,28 +226,24 @@ impl CodeGenerator {
         assigned.to_expr()
     }
 
-    fn gen_binary(&mut self, l: ASTExpr, r: ASTExpr, ope: OperatorKind) -> Expression {
-        use OperatorKind::*;
+    fn gen_binary(&mut self, l: ASTExpr, r: ASTExpr, ope: Operator) -> Expression {
+        use Operator::*;
 
         let l = self.gen_expr(l);
         let r = self.gen_expr(r);
         let ty = l.get_type();
         let ans = self.symbol_table.anonymous_symbol(ty);
         let code = match ope {
-            Plus => Code::Add(l, r, ans.clone()),
-            Minus => Code::Sub(l, r, ans.clone()),
-            Times => Code::Multi(l, r, ans.clone()),
-            Devide => Code::Divide(l, r, ans.clone()),
+            Plus | Minus | Times | Devide => Code::Arithmetic(l, r, ope, ans.clone()),
             Equal | NotEqual => Code::Condition(l, r, ope, ans.clone()),
-            _ => unreachable!(),
         };
         self.code_stack.push(code);
         ans.to_expr()
     }
 
-    fn gen_unary(&mut self, factor: ASTExpr, ope: OperatorKind) -> Expression {
+    fn gen_unary(&mut self, factor: ASTExpr, ope: Operator) -> Expression {
         match ope {
-            OperatorKind::Minus => {
+            Operator::Minus => {
                 let expr = self.gen_expr(factor);
                 match expr.kind {
                     ExpressionKind::Value(val) => {
@@ -265,7 +261,7 @@ impl CodeGenerator {
                             let value = Value::new(kind, Type::int());
                             value.to_expr()
                         };
-                        let code = Code::Multi(l, r, ans.clone());
+                        let code = Code::Arithmetic(l, r, Operator::Times, ans.clone());
                         self.code_stack.push(code);
                         ans.to_expr()
                     }

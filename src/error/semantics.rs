@@ -12,7 +12,6 @@ pub enum SemanticErrorKind {
     FunctionIsNotDefined(String),
     DifferentNumbersArgsTaken(String, usize, usize),
     TypeIsDifferent(Type, Type), // actual, expected
-    FunctionArgTypeIsDifferent(String, usize, Type, Type), // name, k, actual, expected
 }
 
 impl HasReason for SemanticErrorKind {
@@ -41,12 +40,6 @@ impl HasReason for SemanticErrorKind {
                 format!(
                     "Type `{}` is expected, but actually `{}` is appeared.",
                     expected, actual
-                )
-            }
-            FunctionArgTypeIsDifferent(name, k, actual, expected) => {
-                format!(
-                    "Type `{}` is expected, but actually `{}` is appeared at {}-th arg of func `{}`.",
-                    expected, actual, k, name
                 )
             }
         }

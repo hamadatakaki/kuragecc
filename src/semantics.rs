@@ -6,7 +6,7 @@ use super::ast::{
     AsSyntaxExpression, AsSyntaxStatement, HasSyntaxKind, AST,
 };
 use super::error::semantics::{SemanticError, SemanticErrorKind, SemanticResult};
-use super::token::literal::OperatorKind;
+use super::operators::Operator;
 use super::types::Type;
 use function::{FunctionInformation, FunctionManager};
 use identifier::IdentifierManager;
@@ -15,24 +15,6 @@ macro_rules! type_check {
     ($actual_type: expr, $expected_type: expr) => {
         if $actual_type != $expected_type {
             let kind = SemanticErrorKind::TypeIsDifferent($actual_type, $expected_type);
-            // let error = SemanticError::new(kind, $loc);
-            Some(kind)
-        } else {
-            None
-        }
-    };
-}
-
-macro_rules! type_check_func_param {
-    ($actual_type: expr, $expected_type: expr, $k: expr, $name: expr) => {
-        if $actual_type != $expected_type {
-            let kind = SemanticErrorKind::FunctionArgTypeIsDifferent(
-                $name,
-                $k,
-                $actual_type,
-                $expected_type,
-            );
-            // let error = SemanticError::new(kind, $loc);
             Some(kind)
         } else {
             None
@@ -217,13 +199,13 @@ impl SemanticAnalyzer {
         let (new_cond, cond_type) = self.semantic_analyze_expr(cond.clone());
 
         let new_cond = match new_cond.get_kind() {
-            ASTExprKind::Binary(_, _, ope) if ope.priority().is_equivalence() => new_cond,
+            ASTExprKind::Binary(_, _, ope) if ope.is_equivalence() => new_cond,
             _ => {
                 let zero = ASTExpr::new(ASTExprKind::Integer(0), new_cond.get_loc());
                 let kind = ASTExprKind::Binary(
                     Box::new(new_cond.clone()),
                     Box::new(zero),
-                    OperatorKind::NotEqual,
+                    Operator::NotEqual,
                 );
                 ASTExpr::new(kind, new_cond.get_loc())
             }
@@ -267,41 +249,38 @@ impl SemanticAnalyzer {
         &mut self,
         left: ASTExpr,
         right: ASTExpr,
-        ope: OperatorKind,
+        ope: Operator,
     ) -> (ASTExprKind, Type) {
         let (new_left, left_type) = self.semantic_analyze_expr(left.clone());
         let (new_right, right_type) = self.semantic_analyze_expr(right.clone());
 
-        let mut ty = left_type.clone();
-        // TODO: opeに対して型の条件を修正
-        if left_type != right_type {
+        let ty = if ope.type_check_binary(left_type.clone(), right_type.clone()) {
+            left_type
+        } else {
             let err_kind = SemanticErrorKind::TypeIsDifferent(left_type, right_type);
             let loc = new_left.get_loc().extend_to(new_right.get_loc());
             let err = SemanticError::new(err_kind, loc);
             self.errors.push(err);
-            ty = Type::IgnoreType;
-        }
+
+            Type::IgnoreType
+        };
 
         let kind = ASTExprKind::Binary(Box::new(new_left), Box::new(new_right), ope);
         (kind, ty)
     }
 
-    fn semantic_analyze_unary(
-        &mut self,
-        factor: ASTExpr,
-        ope: OperatorKind,
-    ) -> (ASTExprKind, Type) {
+    fn semantic_analyze_unary(&mut self, factor: ASTExpr, ope: Operator) -> (ASTExprKind, Type) {
         let (new_factor, factor_type) = self.semantic_analyze_expr(factor);
 
-        let mut ty = factor_type.clone();
-        // TODO: opeに対して型の条件を修正
-        if factor_type != Type::int() {
-            let err_kind = SemanticErrorKind::TypeIsDifferent(factor_type, Type::int());
-            let loc = new_factor.get_loc();
-            let err = SemanticError::new(err_kind, loc);
+        let ty = if ope.type_check_unary(factor_type.clone()) {
+            factor_type
+        } else {
+            let kind = SemanticErrorKind::TypeIsDifferent(factor_type, Type::int());
+            let err = SemanticError::new(kind, new_factor.get_loc());
             self.errors.push(err);
-            ty = Type::IgnoreType;
-        }
+
+            Type::IgnoreType
+        };
 
         let kind = ASTExprKind::Unary(Box::new(new_factor), ope);
         (kind, ty)
@@ -341,26 +320,24 @@ impl SemanticAnalyzer {
                     new_args = vec![];
 
                     // 引数型のチェック
-                    for (k, (param_type, arg)) in info.param_def.iter().zip(args).enumerate() {
+                    for (param_type, arg) in info.param_def.iter().zip(args) {
                         let param_type = param_type.clone();
                         let (new_arg, arg_type) = self.semantic_analyze_expr(arg);
 
-                        type_check_func_param!(arg_type, param_type, k, id.get_name()).map(
-                            |kind| {
-                                let e = SemanticError::new(kind, id.get_loc());
-                                self.errors.push(e);
-                            },
-                        );
+                        type_check!(arg_type, param_type).map(|kind| {
+                            let e = SemanticError::new(kind, id.get_loc());
+                            self.errors.push(e);
+                        });
 
                         new_args.push(new_arg);
                     }
                 } else {
-                    let err_kind = SemanticErrorKind::DifferentNumbersArgsTaken(
+                    let kind = SemanticErrorKind::DifferentNumbersArgsTaken(
                         id.get_name(),
                         args.len(),
                         size,
                     );
-                    let error = SemanticError::new(err_kind, id.get_loc());
+                    let error = SemanticError::new(kind, id.get_loc());
                     self.errors.push(error);
 
                     new_args = args;

@@ -3,6 +3,7 @@ use super::ast::{
     AsSyntaxExpression, AsSyntaxStatement, AST,
 };
 use super::error::parser::{ParserError, ParserErrorKind, ParserResult};
+use super::operators::Operator;
 use super::token::literal::{OperatorKind, TerminalSymbol};
 use super::token::{Token, TokenKind};
 use super::types::Type;
@@ -434,7 +435,8 @@ impl Parser {
                 self.forward();
                 let right = self.parse_expr4()?;
                 let loc = left.get_loc().extend_to(right.get_loc());
-                let kind = ASTExprKind::Binary(Box::new(left), Box::new(right), ope_kind);
+                let ope = Operator::from_ope_kind(ope_kind);
+                let kind = ASTExprKind::Binary(Box::new(left), Box::new(right), ope);
                 let expr = ASTExpr::new(kind, loc);
 
                 self.parse_expr7_prime(expr)
@@ -457,7 +459,8 @@ impl Parser {
                 self.forward();
                 let right = self.parse_expr3()?;
                 let loc = left.get_loc().extend_to(right.get_loc());
-                let kind = ASTExprKind::Binary(Box::new(left), Box::new(right), ope_kind);
+                let ope = Operator::from_ope_kind(ope_kind);
+                let kind = ASTExprKind::Binary(Box::new(left), Box::new(right), ope);
                 let expr = ASTExpr::new(kind, loc);
 
                 self.parse_expr4_prime(expr)
@@ -480,7 +483,8 @@ impl Parser {
                 self.forward();
                 let right = self.parse_expr2()?;
                 let loc = left.get_loc().extend_to(right.get_loc());
-                let kind = ASTExprKind::Binary(Box::new(left), Box::new(right), ope_kind);
+                let ope = Operator::from_ope_kind(ope_kind);
+                let kind = ASTExprKind::Binary(Box::new(left), Box::new(right), ope);
                 let term = ASTExpr::new(kind, loc);
 
                 self.parse_expr3_prime(term)
@@ -503,7 +507,7 @@ impl Parser {
         match ope {
             Some(OperatorKind::Minus) => {
                 let loc = token.location.extend_to(factor.get_loc());
-                let kind = ASTExprKind::Unary(Box::new(factor), OperatorKind::Minus);
+                let kind = ASTExprKind::Unary(Box::new(factor), Operator::Minus);
                 Ok(ASTExpr::new(kind, loc))
             }
             _ => Ok(factor),

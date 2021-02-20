@@ -1,4 +1,4 @@
-use super::super::token::literal::OperatorKind;
+use super::super::operators::Operator;
 use super::super::types::Type;
 use super::expression::{AsCode, Expression, Symbol};
 
@@ -14,11 +14,8 @@ pub enum Code {
     // return
     Return(Expression),
     // binary operations: (l, r, ans)
-    Add(Expression, Expression, Symbol),
-    Sub(Expression, Expression, Symbol),
-    Multi(Expression, Expression, Symbol),
-    Divide(Expression, Expression, Symbol),
-    Condition(Expression, Expression, OperatorKind, Symbol),
+    Arithmetic(Expression, Expression, Operator, Symbol),
+    Condition(Expression, Expression, Operator, Symbol),
     // function calling: (name, args, to)
     FuncCall(Symbol, Vec<Expression>, Symbol),
     // label
@@ -70,30 +67,10 @@ impl Code {
                 from.as_code()
             ),
             Return(expr) => format!("  ret {} {}\n", expr.type_as_code(), expr.as_code()),
-            Add(l, r, ans) => format!(
-                "  {} = add {} {}, {}\n",
+            Arithmetic(l, r, ope, ans) => format!(
+                "  {} = {} {} {}, {}\n",
                 ans.as_code(),
-                l.type_as_code(),
-                l.as_code(),
-                r.as_code()
-            ),
-            Sub(l, r, ans) => format!(
-                "  {} = sub {} {}, {}\n",
-                ans.as_code(),
-                l.type_as_code(),
-                l.as_code(),
-                r.as_code()
-            ),
-            Multi(l, r, ans) => format!(
-                "  {} = mul {} {}, {}\n",
-                ans.as_code(),
-                l.type_as_code(),
-                l.as_code(),
-                r.as_code()
-            ),
-            Divide(l, r, ans) => format!(
-                "  {} = sdiv {} {}, {}\n",
-                ans.as_code(),
+                ope.as_code(),
                 l.type_as_code(),
                 l.as_code(),
                 r.as_code()
@@ -150,33 +127,13 @@ impl std::fmt::Display for Code {
             Store(to, val) => write!(f, "Store({}: {})", to.as_code(), val.as_code()),
             Load(from, to) => write!(f, "Load({}: {})", to.as_code(), from.as_code()),
             Return(val) => write!(f, "Returen({})", val.as_code()),
-            Add(l, r, ans) => write!(
+            Arithmetic(l, r, ope, ans) => write!(
                 f,
-                "Add({}: {} {} +)",
+                "({}: {} {} {})",
                 ans.as_code(),
                 l.as_code(),
-                r.as_code()
-            ),
-            Sub(l, r, ans) => write!(
-                f,
-                "Sub({}: {} {} +)",
-                ans.as_code(),
-                l.as_code(),
-                r.as_code()
-            ),
-            Multi(l, r, ans) => write!(
-                f,
-                "Multi({}: {} {} +)",
-                ans.as_code(),
-                l.as_code(),
-                r.as_code()
-            ),
-            Divide(l, r, ans) => write!(
-                f,
-                "Devide({}: {} {} +)",
-                ans.as_code(),
-                l.as_code(),
-                r.as_code()
+                r.as_code(),
+                ope
             ),
             Condition(l, r, ope, ans) => write!(
                 f,
